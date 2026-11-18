@@ -87,6 +87,27 @@ export const AGENT_COLORS: Record<string, string> = {
   generic: 'text-slate-300',
 };
 
+/** The same agent colors as hex values, for canvas drawings (share images). */
+export const AGENT_HEX: Record<string, string> = {
+  'claude-code': '#fdba74',
+  opencode: '#22d3ee',
+  codex: '#6ee7b7',
+  cursor: '#7dd3fc',
+  antigravity: '#a5b4fc',
+  'gemini-cli': '#93c5fd',
+  cline: '#c4b5fd',
+  'roo-code': '#f0abfc',
+  'kilo-code': '#f9a8d4',
+  copilot: '#bef264',
+  continue: '#5eead4',
+  windsurf: '#fde68a',
+  aider: '#fca5a5',
+  zed: '#d8b4fe',
+  chatgpt: '#86efac',
+  'claude-ai': '#fdba74',
+  generic: '#cbd5e1',
+};
+
 /** Display names for every agent id a session can carry (adapters and live-captured agents). */
 export const AGENT_NAMES: Record<string, string> = {
   'claude-code': 'Claude Code',

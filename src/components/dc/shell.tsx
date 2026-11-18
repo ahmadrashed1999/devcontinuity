@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Activity, Archive, ArrowRightLeft, BookMarked, Bot, BookOpen, Building2, CalendarClock, Clock, Crown, DatabaseBackup, DollarSign, FileDiff, FolderKanban, GitBranch, Inbox, LayoutDashboard, ListChecks, MessageSquareText, MessagesSquare, Search, Settings, ShieldCheck, Upload, Languages, ClipboardCheck, Send, Menu, X } from 'lucide-react';
+import { Sparkles, Activity, Archive, ArrowRightLeft, BookMarked, Bot, BookOpen, Building2, CalendarClock, Clock, Crown, DatabaseBackup, DollarSign, FileDiff, FolderKanban, GitBranch, Inbox, LayoutDashboard, ListChecks, MessageSquareText, MessagesSquare, Search, Settings, ShieldCheck, Upload, Languages, ClipboardCheck, Send, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Dict, Lang } from '@/lib/i18n';
 import { KillSwitch, NotificationBell } from './common';
@@ -16,6 +16,7 @@ const CORE_NAV: NavGroup[] = [
     { href: '/', key: 'dashboard', icon: LayoutDashboard, exact: true },
     { href: '/agents', key: 'agents', icon: Bot },
     { href: '/search', key: 'search', icon: Search },
+    { href: '/wrapped', key: 'wrapped', icon: Sparkles },
   ] },
   { group: 'historyGroup', items: [
     { href: '/projects', key: 'projects', icon: FolderKanban },

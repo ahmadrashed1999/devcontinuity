@@ -18,6 +18,8 @@ Browse
   projects                                List projects
   sessions [--project <name|id>] [--limit N]
   search <query>                          Full-text search across all sessions
+  wrapped [--month 2026-11 | --year 2026] [--json]
+                                          AI Coding Wrapped: a month or year in numbers
 Continue with any agent
   resume --project <name|id> | --session <id> [--agent claude-code|opencode|codex|cursor|generic]
          [--out <file>]                   Print (or save) a ready-to-paste continuation prompt
@@ -156,6 +158,11 @@ async function main() {
     const { notifyEndings } = await import('../src/server/sync/watcher');
     await notifyEndings(startedAt);
     console.log(JSON.stringify({ ...res, errors: res.errors.slice(0, 20) }, null, 2));
+  } else if (command === 'wrapped') {
+    const { parsePeriod, renderWrappedText, wrappedStats } = await import('../src/server/wrapped');
+    const key = typeof flags.month === 'string' ? flags.month : typeof flags.year === 'string' ? flags.year : undefined;
+    const stats = await wrappedStats(parsePeriod(key));
+    console.log(flags.json ? JSON.stringify(stats, null, 2) : renderWrappedText(stats));
   } else if (command === 'projects') {
     const projects = await db.project.findMany({ orderBy: { lastActivityAt: 'desc' }, include: { _count: { select: { sessions: true, tasks: true } } } });
     for (const p of projects) console.log(`${fmtDate(p.lastActivityAt)}  ${p.slug.padEnd(34)} sessions=${String(p._count.sessions).padEnd(4)} tasks=${String(p._count.tasks).padEnd(5)} ${p.pathExists ? '' : '[folder missing] '}${p.rootPath}`);
