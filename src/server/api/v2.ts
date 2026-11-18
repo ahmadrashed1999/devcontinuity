@@ -17,6 +17,7 @@ import { startJob } from '../jobs/manager';
 import { abortAll, answerDecision, createCompare, createOrder } from '../org/engine';
 import { nextRun, runScheduleAction, Timing } from '../org/scheduler';
 import { seedOrg } from '../org/seed';
+import { CONTINUE_TARGETS, dismissLimitHandoff, getFallbackAgent, pendingLimitHandoffs, setFallbackAgent } from '../handoff/limit';
 import { mcpServer } from '../live/connect';
 import { copySkill, importExistingRules, mcpInventory, mcpSnippets, previewRules, skillInventory, syncRules, TARGETS } from '../rules';
 import { PathError, isInside, validateLocalPath } from '../security/paths';
@@ -284,6 +285,17 @@ export const v2Routes: [string, string, Handler][] = [
     const b = await body(req);
     need(LAUNCH_AGENTS.includes(String(b.agent) as LaunchAgent), 'Unknown agent.');
     return json(await launchAgent({ agent: String(b.agent) as LaunchAgent, projectId: str(b.projectId), sessionId: str(b.sessionId), dir: str(b.dir) ? validateLocalPath(b.dir) : undefined, resume: b.resume === true, promptText: str(b.promptText, 200_000) }));
+  }],
+  // ---------- Automatic handoff when an agent hits a limit ----------
+  ['GET', 'handoff/limits', async () => json({ items: await pendingLimitHandoffs(), fallback: await getFallbackAgent(), targets: CONTINUE_TARGETS })],
+  ['POST', 'handoff/limits/:id/dismiss', async (_r, [id]) => {
+    await dismissLimitHandoff(id);
+    return json({ ok: true });
+  }],
+  ['GET', 'settings/fallback-agent', async () => json({ fallback: await getFallbackAgent(), targets: CONTINUE_TARGETS })],
+  ['PUT', 'settings/fallback-agent', async (req) => {
+    await setFallbackAgent(String((await body(req)).agent ?? ''));
+    return json({ fallback: await getFallbackAgent() });
   }],
   ['GET', 'claude/status', async () => {
     const agents = await detectAgents();

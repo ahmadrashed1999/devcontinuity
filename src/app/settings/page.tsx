@@ -5,6 +5,7 @@ import { APP_VERSION, dataDir } from '@/server/config';
 import { ensureDb, prisma } from '@/server/db';
 import { getT } from '@/lib/server-i18n';
 import { FeaturesSettings } from '@/components/dc/live-ui';
+import { FallbackAgentSetting } from '@/components/dc/limit-handoff';
 import { aiOrgEnabled } from '@/server/features';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,12 @@ export default async function SettingsPage({ searchParams }: PageProps<'/setting
       <Tabs base="/settings" active={tab} tabs={[{ id: 'ai', label: 'AI providers, routes & budget' }, { id: 'general', label: 'AI consent & folders' }, { id: 'agents', label: 'Agents' }, { id: 'features', label: 'Features' }, ...(aiOrg ? [{ id: 'org', label: 'Organization limits' }] : []), { id: 'remote', label: 'Phone access' }, { id: 'security', label: 'Security' }]} />
       {tab === 'ai' && <ProvidersSettings projects={projects} />}
       {tab === 'general' && <SettingsForm />}
-      {tab === 'agents' && <AgentPathsSettings />}
+      {tab === 'agents' && (
+        <div className="space-y-6">
+          <FallbackAgentSetting />
+          <AgentPathsSettings />
+        </div>
+      )}
       {tab === 'features' && <FeaturesSettings />}
       {tab === 'org' && <AdvancedSettings />}
       {tab === 'remote' && <RemoteSettings />}

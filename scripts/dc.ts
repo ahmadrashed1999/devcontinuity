@@ -134,6 +134,7 @@ async function main() {
   if (command === 'import') {
     const { runImport } = await import('../src/server/import/importer');
     const { isLocked, withLock } = await import('../src/server/lock');
+    const startedAt = new Date();
     let last = 0;
     // Same lease lock as the background auto-sync, so a manual import never races it.
     const res = await withLock('import', 60 * 60_000, () => runImport(
@@ -151,6 +152,9 @@ async function main() {
       },
     ));
     if (isLocked(res)) throw new Error('Another import is running (auto-sync or the UI). Try again in a minute.');
+    // Flag sessions that just stopped on a limit or error, exactly like the background sync does.
+    const { notifyEndings } = await import('../src/server/sync/watcher');
+    await notifyEndings(startedAt);
     console.log(JSON.stringify({ ...res, errors: res.errors.slice(0, 20) }, null, 2));
   } else if (command === 'projects') {
     const projects = await db.project.findMany({ orderBy: { lastActivityAt: 'desc' }, include: { _count: { select: { sessions: true, tasks: true } } } });
