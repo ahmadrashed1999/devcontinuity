@@ -32,6 +32,11 @@ const packed = JSON.parse(sh(npm, ['pack', '--json', '--pack-destination', work]
 const tarball = path.join(work, packed.filename);
 console.log(`Packed ${packed.filename}: ${packed.entryCount} files, ${(packed.size / 1024 / 1024).toFixed(1)} MB (${(packed.unpackedSize / 1024 / 1024).toFixed(1)} MB unpacked)`);
 
+// A CRLF shebang ("node\r") cannot run on macOS or Linux.
+for (const f of packed.files.filter((x) => x.path.startsWith('bin/') || x.path.endsWith('.mjs'))) {
+  if (fs.readFileSync(path.join(APP_ROOT, f.path), 'utf8').includes('\r\n')) fail(`${f.path} has Windows line endings; run "git add --renormalize ." or pack from CI.`);
+}
+
 // 2. Private data scan over the packed files.
 const needles = [os.homedir(), os.homedir().replace(/\\/g, '/'), os.homedir().replace(/\\/g, '\\\\'), APP_ROOT, APP_ROOT.replace(/\\/g, '/')].filter((n) => n.length > 4);
 const user = os.userInfo().username;
