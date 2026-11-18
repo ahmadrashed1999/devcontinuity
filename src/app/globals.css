@@ -1,26 +1,100 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), var(--font-tajawal), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-surface: var(--card);
+  --color-cyan: #06b6d4;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* DevContinuity palette: always dark. */
+:root,
+.dark {
+  --background: #0b0f19;
+  --foreground: #e5e7eb;
+  --card: #111827;
+  --card-foreground: #e5e7eb;
+  --popover: #111827;
+  --popover-foreground: #e5e7eb;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #1f2937;
+  --secondary-foreground: #e5e7eb;
+  --muted: #1a2233;
+  --muted-foreground: #9ca3af;
+  --accent: #1e293b;
+  --accent-foreground: #e5e7eb;
+  --destructive: #ef4444;
+  --border: rgb(148 163 184 / 0.14);
+  --input: rgb(148 163 184 / 0.2);
+  --ring: #6366f1;
+  --radius: 0.625rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: dark;
+  }
+  html[lang="ar"] {
+    font-family: var(--font-tajawal), var(--font-inter), sans-serif;
+  }
+  /* Layout safety: content may shrink, long paths/ids wrap, and the page itself never scrolls sideways. */
+  html, body { overflow-x: clip; }
+  .grid > *, main, main > * { min-width: 0; }
+  .font-mono, td, th, dd { overflow-wrap: anywhere; }
+  button, a, input, select, textarea { touch-action: manipulation; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* A table that is wider than its container scrolls inside it instead of widening the page. */
+.dc-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+
+/* Agent identity: one colour per agent, used for dots, chips and bars. */
+.agent-dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: currentColor; flex-shrink: 0; }
+
+@keyframes dc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.live-pulse { animation: dc-pulse 1.8s ease-in-out infinite; }
+
+.prose-dc pre { white-space: pre-wrap; word-break: break-word; }
+.mark-hit mark, .snippet-hit b { background: rgb(99 102 241 / 0.35); color: #fff; border-radius: 3px; padding: 0 2px; font-weight: 600; }

@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# DevContinuity: local data (recovered transcripts, database, backups) never goes into git
+/data/
+!.env.example
+*.tmp.ts
+
+# Personal notes kept out of the public repo
+/DEVCONTINUITY_STATUS.md
+/PLAN_AI_ORGANIZATION.md
+
+# Isolated verification builds (NEXT_DIST_DIR)
+/.next-*/
