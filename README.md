@@ -13,6 +13,11 @@
 
 **One local log for every AI coding agent.**
 
+<p align="center">
+  <img src="docs/images/demo.gif" alt="Claude Code hits its usage limit; DevContinuity notifies you, you review the briefing and hand it to Codex, and Codex's session appears in the same log" width="100%" />
+  <br /><sub>Claude Code hits its limit → DevContinuity tells you → review the briefing → Codex continues → its session lands in the same log. (Fictional demo workspace.)</sub>
+</p>
+
 You use Claude Code in the morning, Codex after lunch, Antigravity or Cursor for a UI task, and Copilot in VS Code. Each one keeps its history in its own place and format, and none of them knows what the others did. DevContinuity collects all of it into one searchable timeline on your own machine, shows what each agent actually changed, and lets any agent pick up where another one stopped.
 
 - **Every agent, one timeline:** Claude Code, Codex, OpenCode, Antigravity, Cline, Roo Code, Kilo Code, GitHub Copilot Chat, Continue, Gemini CLI, Cursor, Windsurf, and anything that can send an HTTP request.
