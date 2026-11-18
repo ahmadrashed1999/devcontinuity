@@ -2,7 +2,7 @@ import { MAX_EVENT_TEXT } from '../config';
 import { redactSecrets } from '../security/redact';
 
 /** Agents with an adapter. `live` imports what agents report themselves (hooks, OpenTelemetry, MCP). */
-export type AgentId = 'claude-code' | 'opencode' | 'codex' | 'cursor' | 'cline' | 'copilot' | 'continue' | 'antigravity' | 'live' | 'generic';
+export type AgentId = 'claude-code' | 'opencode' | 'codex' | 'cursor' | 'cline' | 'copilot' | 'continue' | 'antigravity' | 'aider' | 'zed' | 'chatgpt' | 'claude-ai' | 'live' | 'generic';
 
 export type EventKind =
   | 'user_message'

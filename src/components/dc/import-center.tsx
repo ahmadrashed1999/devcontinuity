@@ -223,7 +223,7 @@ export function ImportCenter({ projects }: { projects: { id: string; name: strin
           <p className="mb-3 text-xs text-muted-foreground">A copied .claude folder from another machine or a backup drive, a different CLAUDE_CONFIG_DIR, a Codex home, etc. The folder is only read.</p>
           <div className="flex flex-wrap gap-2">
             <select value={rootAgent} onChange={(e) => setRootAgent(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-sm">
-              {['claude-code', 'codex', 'opencode', 'antigravity', 'cline', 'copilot', 'continue', 'cursor', 'generic'].map((a) => <option key={a}>{a}</option>)}
+              {['claude-code', 'codex', 'opencode', 'antigravity', 'cline', 'copilot', 'continue', 'cursor', 'aider', 'zed', 'generic'].map((a) => <option key={a}>{a}</option>)}
             </select>
             <input value={root} onChange={(e) => setRoot(e.target.value)} placeholder="D:\\old-laptop\\.claude" className="h-8 min-w-64 flex-1 rounded-md border border-border bg-background px-2 font-mono text-sm" />
             <button disabled={!root.trim() || running} onClick={() => start({ root, rootAgent, onlyRoot: true, agents: [rootAgent] })} className="h-8 rounded-lg bg-secondary px-3 text-sm disabled:opacity-50">Import folder</button>
@@ -236,6 +236,8 @@ export function ImportCenter({ projects }: { projects: { id: string; name: strin
             <select value={upAgent} onChange={(e) => setUpAgent(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-sm">
               <option value="generic">Generic JSON/JSONL</option>
               <option value="claude-code">Claude Code transcript</option>
+              <option value="chatgpt">ChatGPT data export (ZIP or conversations.json)</option>
+              <option value="claude-ai">Claude.ai data export (ZIP or conversations.json)</option>
             </select>
             <select value={upProject} onChange={(e) => setUpProject(e.target.value)} className="h-8 max-w-48 rounded-md border border-border bg-background px-2 text-sm">
               <option value="">Detect project</option>

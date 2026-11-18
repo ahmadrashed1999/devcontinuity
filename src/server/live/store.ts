@@ -21,6 +21,8 @@ export interface LiveRecord {
   session: string;
   /** Working directory of the process that reported it, when known. */
   cwd?: string;
+  /** Event name passed by the hook command when the payload does not carry one (Copilot CLI). */
+  event?: string;
   payload: unknown;
 }
 

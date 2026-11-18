@@ -30,12 +30,14 @@ Connect agents (live logging)
   agents                                  Which agents are connected and what they have logged
   connect <agent> [--telemetry] [--yes]   Show, then (with --yes) apply hooks + MCP setup for an agent
   disconnect <agent> [--yes]              Remove DevContinuity's hooks/MCP/telemetry from an agent
-                                          agents: gemini-cli, cursor, windsurf, antigravity, claude-code, codex
+                                          agents: gemini-cli, cursor, windsurf, antigravity, claude-code, codex,
+                                          qwen-code, copilot-cli, kiro (experimental)
 Safety
   backup [--with-archives] [--note <text>]
   token                                   Show where the local API token is stored
 
-Imported automatically: claude-code, codex, opencode, antigravity, cline (+ Roo/Kilo), copilot, continue, cursor.
+Imported automatically: claude-code, codex, opencode, antigravity, cline (+ Roo/Kilo), copilot, continue, cursor, aider, zed.
+Upload in the Import Center: ChatGPT and Claude.ai data exports.
 Any other agent: connect it, or POST events to /api/ingest/event.`;
 
 function parseArgs(argv: string[]) {

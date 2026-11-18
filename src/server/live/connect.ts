@@ -10,7 +10,9 @@ import { listLiveStreams } from './store';
  * or removes DevContinuity's own entries.
  */
 
-export const CONNECT_AGENTS = ['gemini-cli', 'cursor', 'windsurf', 'antigravity', 'claude-code', 'codex'] as const;
+export const CONNECT_AGENTS = ['gemini-cli', 'cursor', 'windsurf', 'antigravity', 'claude-code', 'codex', 'qwen-code', 'copilot-cli', 'kiro'] as const;
+/** Recipes built from published docs but not yet tried against the real tool on this machine. */
+export const EXPERIMENTAL_CONNECT: readonly string[] = ['qwen-code', 'copilot-cli', 'kiro'];
 export type ConnectAgent = (typeof CONNECT_AGENTS)[number];
 
 export interface ConnectChange {
@@ -30,7 +32,7 @@ export interface ConnectPlan {
   notes: string[];
 }
 
-const LABELS: Record<ConnectAgent, string> = { 'gemini-cli': 'Gemini CLI', cursor: 'Cursor', windsurf: 'Windsurf', antigravity: 'Antigravity', 'claude-code': 'Claude Code', codex: 'Codex' };
+const LABELS: Record<ConnectAgent, string> = { 'gemini-cli': 'Gemini CLI', cursor: 'Cursor', windsurf: 'Windsurf', antigravity: 'Antigravity', 'claude-code': 'Claude Code', codex: 'Codex', 'qwen-code': 'Qwen Code', 'copilot-cli': 'Copilot CLI', kiro: 'Kiro' };
 /** Our hook / MCP entries, whether they point at a checkout or at the copies an npm installation keeps in its data folder. */
 const HOOK_MARKS = ['scripts/hook.mjs', 'devcontinuity-hook.mjs'];
 const MCP_MARKS = ['scripts/mcp.ts', 'devcontinuity-mcp.mjs'];
@@ -113,6 +115,9 @@ function configPaths() {
     windsurfHooks: path.join(home, '.codeium', 'windsurf', 'hooks.json'),
     windsurfMcp: path.join(home, '.codeium', 'windsurf', 'mcp_config.json'),
     antigravityMcp: path.join(home, '.gemini', 'antigravity', 'mcp_config.json'),
+    qwenSettings: path.join(home, '.qwen', 'settings.json'),
+    copilotMcp: path.join(process.env.COPILOT_HOME?.trim() || path.join(home, '.copilot'), 'mcp-config.json'),
+    kiroMcp: path.join(home, '.kiro', 'settings', 'mcp.json'),
   };
 }
 
@@ -173,10 +178,10 @@ function setFlatHooks(cfg: Rec, events: string[], entry: Rec, remove: boolean) {
   if (!remove) for (const ev of events) hooks[ev] = [...((hooks[ev] as unknown[] | undefined) ?? []), entry];
 }
 
-function setMcp(cfg: Rec, remove: boolean, key = 'mcpServers') {
+function setMcp(cfg: Rec, remove: boolean, key = 'mcpServers', extra: Rec = {}) {
   const servers = ((cfg[key] as Rec | undefined) ??= {}) as Rec;
   if (remove) delete servers.devcontinuity;
-  else servers.devcontinuity = mcpServer();
+  else servers.devcontinuity = { ...extra, ...mcpServer() };
   if (Object.keys(servers).length === 0) delete cfg[key];
 }
 
@@ -284,7 +289,41 @@ export function planConnect(agent: ConnectAgent, opts: { telemetry?: boolean; re
       plan.notes.push('Codex rollouts are already imported automatically; the MCP server adds summaries and cross-agent history.');
       break;
     }
+    case 'qwen-code': {
+      // Qwen Code is a Gemini CLI fork and reads the same settings layout from ~/.qwen/settings.json.
+      const events = ['SessionStart', 'BeforeAgent', 'AfterAgent', 'BeforeTool', 'AfterTool', 'SessionEnd'];
+      push(
+        jsonChange(p.qwenSettings, remove ? 'Remove DevContinuity hooks, MCP server and telemetry' : `Record ${events.join(', ')} hooks and add the DevContinuity MCP server`, (cfg) => {
+          setNestedHooks(cfg, events, hookCommand('qwen-code'), remove, new Set(['BeforeTool', 'AfterTool']));
+          setMcp(cfg, remove);
+          const tel = cfg.telemetry as Rec | undefined;
+          if (remove && tel && String(tel.otlpEndpoint ?? '').startsWith(otlpBase())) delete cfg.telemetry;
+          if (!remove && opts.telemetry) cfg.telemetry = { ...(tel ?? {}), enabled: true, target: 'local', otlpEndpoint: `${otlpBase()}/t/${apiToken()}`, otlpProtocol: 'http', logPrompts: true };
+        }),
+      );
+      plan.notes.push('Hooks only fire in Qwen Code versions that support Gemini-style hooks; older versions ignore them, and the MCP server still works.');
+      break;
+    }
+    case 'copilot-cli': {
+      push(jsonChange(p.copilotMcp, remove ? 'Remove the DevContinuity MCP server' : 'Add the DevContinuity MCP server', (cfg) => setMcp(cfg, remove, 'mcpServers', { type: 'local', tools: ['*'] })));
+      if (!remove) {
+        const cmd = (ev: string) => `${hookCommand('copilot-cli')} ${ev}`;
+        const hooks = { version: 1, hooks: Object.fromEntries(['sessionStart', 'userPromptSubmitted', 'preToolUse', 'postToolUse', 'errorOccurred', 'sessionEnd'].map((ev) => [ev, [{ type: 'command', bash: cmd(ev), powershell: cmd(ev), timeoutSec: 10 }]])) };
+        plan.notes.push(`Copilot CLI reads hooks from each repository. To log prompts and tool calls in a repository, save this as .github/hooks/devcontinuity.json there:\n${JSON.stringify(hooks, null, 2)}`);
+      }
+      break;
+    }
+    case 'kiro': {
+      push(jsonChange(p.kiroMcp, remove ? 'Remove the DevContinuity MCP server' : 'Add the DevContinuity MCP server', (cfg) => setMcp(cfg, remove)));
+      if (!remove) {
+        const hooks = Object.fromEntries(['agentSpawn', 'userPromptSubmit', 'preToolUse', 'postToolUse', 'stop'].map((ev) => [ev, [{ command: hookCommand('kiro') }]]));
+        plan.notes.push(`Kiro CLI agents can log every prompt and tool call: add this "hooks" block to your agent file (~/.kiro/agents/<name>.json):\n${JSON.stringify({ hooks }, null, 2)}`);
+      }
+      plan.notes.push('Reload MCP servers in Kiro after connecting.');
+      break;
+    }
   }
+  if (EXPERIMENTAL_CONNECT.includes(agent)) plan.notes.unshift('Experimental: built from the tool\'s published hook/MCP format and tested with fixtures, not yet against every version. Check the result with "agents" after a session.');
   if (!remove) plan.notes.push('Ask the agent to call the DevContinuity "log_summary" tool when it finishes a task (the Agent rules sync can add this instruction for you).');
   return plan;
 }
@@ -339,6 +378,12 @@ export function connectionStatus(): AgentConnection[] {
         return { ...base, hooks: false, mcp: has(path.join(homeDir(), '.claude.json'), MCP_MARKS), telemetry: has(p.claudeSettings, '/api/otlp') };
       case 'codex':
         return { ...base, hooks: false, mcp: has(p.codexConfig, MCP_MARKS), telemetry: has(p.codexConfig, '/api/otlp') };
+      case 'qwen-code':
+        return { ...base, hooks: has(p.qwenSettings, HOOK_MARKS), mcp: has(p.qwenSettings, MCP_MARKS), telemetry: has(p.qwenSettings, '/api/otlp') };
+      case 'copilot-cli':
+        return { ...base, hooks: mine.length > 0, mcp: has(p.copilotMcp, MCP_MARKS), telemetry: false };
+      case 'kiro':
+        return { ...base, hooks: mine.length > 0, mcp: has(p.kiroMcp, MCP_MARKS), telemetry: false };
     }
   });
 }

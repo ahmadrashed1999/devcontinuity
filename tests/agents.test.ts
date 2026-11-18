@@ -359,3 +359,194 @@ describe('connect / disconnect agent configs', () => {
     }
   });
 });
+
+describe('Aider adapter', () => {
+  const chat = [
+    '',
+    '# aider chat started at 2026-11-10 09:00:00',
+    '',
+    '> Aider v0.86.0',
+    '> Model: claude-sonnet-4-5 with diff edit format',
+    '',
+    '#### /add src/app.py',
+    '',
+    '> Added src/app.py to the chat',
+    '',
+    '#### add a health endpoint',
+    '',
+    'Here is the change.',
+    '',
+    'src/app.py',
+    '```python',
+    '<<<<<<< SEARCH',
+    '=======',
+    'def health(): return "ok"',
+    '>>>>>>> REPLACE',
+    '```',
+    '',
+    '> Applied edit to src/app.py',
+    '> Commit 1a2b3c4 feat: Add health endpoint',
+    '',
+    '# aider chat started at 2026-11-11 14:00:00',
+    '',
+    '#### write tests for it',
+    '',
+    '> litellm.RateLimitError: AnthropicException - rate limit exceeded',
+    '',
+  ].join('\n');
+
+  it('splits runs, maps prompts with times from the input history, edits, commits and limit stops', async () => {
+    const { aiderAdapter, parseAiderInputHistory, splitAiderRuns } = await import('../src/server/adapters/aider');
+    const dir = path.join(tmp, 'aider-proj');
+    write(path.relative(tmp, path.join(dir, '.aider.chat.history.md')), chat);
+    write(path.relative(tmp, path.join(dir, '.aider.input.history')), '\n# 2026-11-10 09:00:05.1\n+/add src/app.py\n\n# 2026-11-10 09:01:00.2\n+add a health endpoint\n\n# 2026-11-11 14:00:10.0\n+write tests for it\n');
+    expect(splitAiderRuns(chat).map((r) => r.startedAt)).toEqual(['2026-11-10 09:00:00', '2026-11-11 14:00:00']);
+    expect(parseAiderInputHistory('# 2026-11-10 09:01:00.2\n+line one\n+line two\n')[0].text).toBe('line one\nline two');
+
+    const inv = await aiderAdapter.scan(dir);
+    expect(inv.sessions.map((s) => s.externalId)).toEqual(['aider-proj@2026-11-10 09:00:00', 'aider-proj@2026-11-11 14:00:00']);
+    const [first, second] = inv.sessions;
+    const a = memorySink();
+    const s1 = await aiderAdapter.parse(first, a.sink, { archivePath: first.sourcePath, companions: first.companions });
+    expect(s1.prompts.map((p) => p.text)).toEqual(['add a health endpoint']);
+    expect(s1.prompts[0].timestamp?.toISOString()).toBe(new Date('2026-11-10T09:01:00.2').toISOString());
+    expect(s1.endState).toBe('completed_turn');
+    expect(a.fileOps[0]).toMatchObject({ path: path.join(dir, 'src', 'app.py'), op: 'edit', succeeded: true });
+    expect(s1.gitOps[0]).toMatchObject({ kind: 'commit', sha: '1a2b3c4' });
+    expect(s1.cwd).toBe(dir);
+    const b = memorySink();
+    const s2 = await aiderAdapter.parse(second, b.sink, { archivePath: second.sourcePath, companions: second.companions });
+    expect(s2.endState).toBe('api_error');
+    expect(s2.endStateDetail).toMatch(/RateLimitError/);
+  });
+});
+
+describe('ChatGPT and Claude.ai data exports', () => {
+  const chatgpt = [{
+    conversation_id: 'c-1', title: 'Regex help', create_time: 1763000000, update_time: 1763000100, current_node: 'n4',
+    mapping: {
+      root: { id: 'root', message: null, parent: null, children: ['n1'] },
+      n1: { id: 'n1', parent: 'root', children: ['n2', 'nX'], message: { id: 'n1', author: { role: 'user' }, create_time: 1763000001, content: { content_type: 'text', parts: ['Match an email address'] } } },
+      nX: { id: 'nX', parent: 'n1', children: [], message: { id: 'nX', author: { role: 'assistant' }, content: { content_type: 'text', parts: ['abandoned branch'] } } },
+      n2: { id: 'n2', parent: 'n1', children: ['n3'], message: { id: 'n2', author: { role: 'assistant' }, recipient: 'python', content: { content_type: 'code', text: 'import re' }, metadata: { model_slug: 'gpt-5' } } },
+      n3: { id: 'n3', parent: 'n2', children: ['n4'], message: { id: 'n3', author: { role: 'tool', name: 'python' }, content: { content_type: 'execution_output', text: 'ok' } } },
+      n4: { id: 'n4', parent: 'n3', children: [], message: { id: 'n4', author: { role: 'assistant' }, recipient: 'all', end_turn: true, create_time: 1763000050, content: { content_type: 'text', parts: ['Use \\S+@\\S+'] }, metadata: { model_slug: 'gpt-5' } } },
+    },
+  }];
+  const claude = [{ uuid: 'cl-1', name: 'Plan the API', created_at: '2026-11-01T10:00:00Z', updated_at: '2026-11-01T10:05:00Z', chat_messages: [
+    { uuid: 'm1', sender: 'human', text: 'Design a REST API', created_at: '2026-11-01T10:00:00Z', attachments: [{ file_name: 'spec.md', extracted_content: 'GET /items' }] },
+    { uuid: 'm2', sender: 'assistant', created_at: '2026-11-01T10:01:00Z', content: [{ type: 'thinking', thinking: 'consider REST' }, { type: 'text', text: 'Here is the design.' }] },
+  ] }];
+
+  it('imports the visible branch of ChatGPT conversations and skips other export types', async () => {
+    const { chatgptAdapter, chatgptThread } = await import('../src/server/adapters/chat-exports');
+    expect(chatgptThread(chatgpt[0]).map((m) => m.id)).toEqual(['n1', 'n2', 'n3', 'n4']);
+    const root = path.join(tmp, 'upload-chatgpt');
+    write(path.relative(tmp, path.join(root, 'conversations.json')), JSON.stringify([...chatgpt, ...claude]));
+    const inv = await chatgptAdapter.scan(root);
+    expect(inv.sessions.map((s) => s.sourceKey)).toEqual(['chatgpt:c-1']);
+    const { sink, events } = memorySink();
+    const s = await chatgptAdapter.parse(inv.sessions[0], sink, { archivePath: inv.sessions[0].sourcePath });
+    expect(s.title).toBe('Regex help');
+    expect(s.prompts.map((p) => p.text)).toEqual(['Match an email address']);
+    expect(s.toolCallCount).toBe(1);
+    expect(s.endState).toBe('completed_turn');
+    expect(s.primaryModel).toBe('gpt-5');
+    expect(events.some((e) => e.text === 'abandoned branch')).toBe(false);
+  });
+
+  it('imports Claude.ai conversations with thinking and attachments', async () => {
+    const { claudeAiAdapter } = await import('../src/server/adapters/chat-exports');
+    const root = path.join(tmp, 'upload-claude-ai');
+    write(path.relative(tmp, path.join(root, 'conversations.json')), JSON.stringify(claude));
+    const inv = await claudeAiAdapter.scan(root);
+    expect(inv.sessions.map((s) => s.sourceKey)).toEqual(['claude-ai:cl-1']);
+    const { sink, events } = memorySink();
+    const s = await claudeAiAdapter.parse(inv.sessions[0], sink, { archivePath: inv.sessions[0].sourcePath });
+    expect(s.title).toBe('Plan the API');
+    expect(s.prompts[0].text).toContain('[attachment: spec.md]');
+    expect(events.map((e) => e.kind)).toEqual(['user_message', 'thinking', 'assistant_message']);
+    expect(s.endState).toBe('completed_turn');
+  });
+});
+
+describe('Zed adapter (experimental)', () => {
+  it('reads text threads and JSON agent threads from threads.db', async () => {
+    const { zedAdapter, zedTextThreadMessages } = await import('../src/server/adapters/zed');
+    const text = 'Explain closures\nA closure captures variables.\n';
+    const doc = { id: 'z1', zed: 'context', version: '0.4.0', text, summary: 'Closures', messages: [{ id: { replica_id: 0, value: 0 }, start: 0, metadata: { role: 'user', status: 'Done' } }, { id: { replica_id: 0, value: 1 }, start: 17, metadata: { role: 'assistant', status: 'Done' } }] };
+    expect(zedTextThreadMessages(doc).map((m) => [m.role, m.text])).toEqual([['user', 'Explain closures'], ['assistant', 'A closure captures variables.']]);
+
+    const root = path.join(tmp, 'zed-threads');
+    write(path.relative(tmp, path.join(root, 'Closures - 1.zed.json')), JSON.stringify(doc));
+    fs.mkdirSync(root, { recursive: true });
+    const db = new DatabaseSync(path.join(root, 'threads.db'));
+    db.exec('CREATE TABLE threads (id TEXT PRIMARY KEY, summary TEXT NOT NULL, updated_at TEXT NOT NULL, data_type TEXT NOT NULL, data BLOB NOT NULL)');
+    const thread = { version: '0.2.0', summary: 'Add tests', model: { provider: 'anthropic', model: 'claude-sonnet-4-5' }, messages: [
+      { id: 0, role: 'user', segments: [{ type: 'text', text: 'Add tests for utils' }] },
+      { id: 1, role: 'assistant', segments: [{ type: 'thinking', text: 'look at utils' }, { type: 'text', text: 'Adding tests.' }], tool_uses: [{ id: 't1', name: 'edit_file', input: { path: '/w/utils.test.ts' } }], tool_results: [{ tool_use_id: 't1', is_error: false, content: 'ok' }] },
+      { User: { id: 'u2', content: [{ Text: 'thanks' }] } },
+      { Agent: { content: [{ Text: 'Done.' }], tool_results: {} } },
+    ] };
+    db.prepare('INSERT INTO threads VALUES (?, ?, ?, ?, ?)').run('th-1', 'Add tests', '2026-11-12T10:00:00Z', 'json', Buffer.from(JSON.stringify(thread)));
+    db.close();
+
+    const inv = await zedAdapter.scan(root);
+    expect(inv.sessions.map((s) => s.extra?.kind).sort()).toEqual(['agent-thread', 'text-thread']);
+    const textThread = inv.sessions.find((s) => s.extra?.kind === 'text-thread')!;
+    const t = await zedAdapter.parse(textThread, memorySink().sink, { archivePath: textThread.sourcePath });
+    expect([t.title, t.endState, t.prompts.length]).toEqual(['Closures', 'completed_turn', 1]);
+    const agentThread = inv.sessions.find((s) => s.extra?.kind === 'agent-thread')!;
+    const m = memorySink();
+    const a = await zedAdapter.parse(agentThread, m.sink, { archivePath: agentThread.sourcePath });
+    expect(a.prompts.map((p) => p.text)).toEqual(['Add tests for utils', 'thanks']);
+    expect(a.primaryModel).toBe('claude-sonnet-4-5');
+    expect(m.fileOps[0]).toMatchObject({ path: '/w/utils.test.ts', op: 'edit' });
+    expect(a.endState).toBe('completed_turn');
+    disposeWorkingCopies();
+  });
+});
+
+describe('live capture recipes: Qwen Code, Copilot CLI, Kiro (experimental)', () => {
+  it('normalizes Copilot CLI hook payloads using the event name from the hook command', () => {
+    const r = (event: string, payload: unknown): LiveRecord => ({ ...rec(payload, 'hook', 'copilot-cli'), event });
+    expect(normalizeLive(r('userPromptSubmitted', { timestamp: 1763000000000, cwd: '/w', prompt: 'fix it' })).ops).toEqual([{ op: 'prompt', text: 'fix it' }]);
+    const post = normalizeLive(r('postToolUse', { cwd: '/w', toolName: 'bash', toolArgs: '{"command":"npm test"}', toolResult: { resultType: 'failure', textResultForLlm: '1 failing' } }));
+    expect(post.ops[0]).toMatchObject({ op: 'tool_result', name: 'bash', command: 'npm test', isError: true, output: '1 failing' });
+    expect(normalizeLive(r('errorOccurred', { error: { name: 'RateLimitError', message: 'quota exceeded' } })).ops[0]).toEqual({ op: 'error', text: 'RateLimitError: quota exceeded' });
+  });
+
+  it('maps Kiro CLI hook events onto the Claude Code-style handler', () => {
+    const k = (payload: unknown) => normalizeLive(rec(payload, 'hook', 'kiro'));
+    expect(k({ hook_event_name: 'userPromptSubmit', cwd: '/w', prompt: 'add docs' }).ops).toEqual([{ op: 'prompt', text: 'add docs' }]);
+    expect(k({ hook_event_name: 'postToolUse', tool_name: 'fs_write', tool_input: { path: '/w/a.md' }, tool_response: { success: true } }).ops[0]).toMatchObject({ op: 'tool_result', name: 'fs_write', isError: false });
+  });
+
+  it('plans Qwen Code, Copilot CLI and Kiro connections in their own config files', async () => {
+    const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, ROOT: process.env.DEVCONTINUITY_APP_ROOT };
+    const home = path.join(tmp, 'home-new-agents');
+    fs.mkdirSync(home, { recursive: true });
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    process.env.DEVCONTINUITY_APP_ROOT = path.resolve(__dirname, '..');
+    try {
+      const { planConnect } = await import('../src/server/live/connect');
+      const qwen = planConnect('qwen-code');
+      expect(path.relative(home, qwen.changes[0].file)).toBe(path.join('.qwen', 'settings.json'));
+      const q = JSON.parse(qwen.changes[0].after!);
+      expect(q.hooks.BeforeTool[0].hooks[0].command).toMatch(/hook\.mjs" qwen-code$/);
+      expect(q.mcpServers.devcontinuity.command).toBe('node');
+      const copilot = planConnect('copilot-cli');
+      expect(JSON.parse(copilot.changes[0].after!).mcpServers.devcontinuity).toMatchObject({ type: 'local', tools: ['*'], command: 'node' });
+      expect(copilot.notes.some((n) => n.includes('.github/hooks/devcontinuity.json') && n.includes('postToolUse'))).toBe(true);
+      expect(copilot.notes[0]).toMatch(/^Experimental/);
+      const kiro = planConnect('kiro');
+      expect(path.relative(home, kiro.changes[0].file)).toBe(path.join('.kiro', 'settings', 'mcp.json'));
+    } finally {
+      for (const [k, v] of [['HOME', saved.HOME], ['USERPROFILE', saved.USERPROFILE], ['DEVCONTINUITY_APP_ROOT', saved.ROOT]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+});

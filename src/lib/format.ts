@@ -129,6 +129,8 @@ export const AGENT_NAMES: Record<string, string> = {
   kiro: 'Kiro',
   trae: 'Trae',
   zed: 'Zed',
+  chatgpt: 'ChatGPT',
+  'claude-ai': 'Claude.ai',
   live: 'Live capture',
   generic: 'Generic import',
 };

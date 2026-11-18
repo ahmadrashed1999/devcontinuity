@@ -2,7 +2,7 @@
 /**
  * DevContinuity hook recorder. Agents run it as a hook command and pipe the event JSON to stdin:
  *
- *   node "<repo>/scripts/hook.mjs" <agent>
+ *   node "<repo>/scripts/hook.mjs" <agent> [event]
  *   node "<data>/bin/devcontinuity-hook.mjs" <agent>     (npm installation)
  *
  * It appends the payload unchanged to data/live/<agent>/<session>.jsonl and exits 0 without
@@ -64,6 +64,8 @@ async function main() {
   }
   const session = safe(payload.session_id ?? payload.sessionId ?? payload.conversation_id ?? payload.trajectory_id ?? payload.thread_id, `${agent}-${new Date().toISOString().slice(0, 10)}`);
   const record = { v: 1, at: new Date().toISOString(), source: 'hook', agent, session, cwd: process.cwd(), payload: clip(payload) };
+  // Agents whose payload does not name the event (Copilot CLI) get it as a second argument.
+  if (process.argv[3]) record.event = safe(process.argv[3], 'event');
   // Cursor waits for an answer on "before" hooks: always allow, never change anything.
   const ev = payload.hook_event_name;
   if (ev === 'beforeSubmitPrompt') process.stdout.write('{"continue":true}');

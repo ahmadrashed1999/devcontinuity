@@ -18,7 +18,7 @@ const MAX_WAIT_MS = 10 * 60_000;
 const POLL_MS = 5 * 60_000;
 
 /** Agents kept in sync automatically (Cursor and generic uploads are imported on request). */
-const AUTO_SYNC_AGENTS: AgentId[] = ['claude-code', 'codex', 'opencode', 'antigravity', 'cline', 'copilot', 'continue', 'live'];
+const AUTO_SYNC_AGENTS: AgentId[] = ['claude-code', 'codex', 'opencode', 'antigravity', 'cline', 'copilot', 'continue', 'aider', 'zed', 'live'];
 
 /** Which changed files (path relative to the watched folder) mean a session changed. */
 const WATCH_FILTER: Partial<Record<AgentId, RegExp>> = {
@@ -29,6 +29,7 @@ const WATCH_FILTER: Partial<Record<AgentId, RegExp>> = {
   cline: /(api_conversation_history|ui_messages)\.json$/i,
   copilot: /chatSessions\/[^/]+\.jsonl?$/i,
   continue: /\.json$/i,
+  zed: /(threads\.db(-wal)?|\.zed\.json)$/i,
   live: /\.jsonl$/i,
 };
 
@@ -54,6 +55,8 @@ export class AutoSync {
     for (const r of await resolveRoots('cline')) targets.push({ agent: 'cline', dir: path.join(r, 'tasks') });
     for (const r of await resolveRoots('copilot')) targets.push({ agent: 'copilot', dir: r });
     for (const r of await resolveRoots('continue')) targets.push({ agent: 'continue', dir: r });
+    for (const r of await resolveRoots('zed')) targets.push({ agent: 'zed', dir: r });
+    // Aider writes into project folders; it is picked up by the periodic poll instead of a watcher.
     for (const r of await resolveRoots('live')) targets.push({ agent: 'live', dir: r });
     for (const t of targets) {
       if (!fs.existsSync(t.dir)) continue;
