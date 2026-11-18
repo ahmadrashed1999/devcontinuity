@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { findAgent } from '../agents/binaries';
-import { redactSecrets } from '../security/redact';
+import { findAgent } from '@/server/agents/binaries';
+import { redactSecrets } from '@/server/security/redact';
 
 /**
  * CLI executors: delegate a task to Claude Code, Codex or OpenCode running headless inside the

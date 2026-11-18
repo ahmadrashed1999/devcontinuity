@@ -1,4 +1,4 @@
-import { OrgChart } from '@/components/dc/org-ui';
+import { OrgChart } from '@/modules/org/ui';
 import { ClaudeReadiness } from '@/components/dc/tools-ui';
 import { PageHeader } from '@/components/dc/ui';
 import { ensureDb } from '@/server/db';

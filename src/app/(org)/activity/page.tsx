@@ -1,5 +1,5 @@
 import { KillSwitch } from '@/components/dc/common';
-import { ActivityLive } from '@/components/dc/org-ui';
+import { ActivityLive } from '@/modules/org/ui';
 import { PageHeader, Panel } from '@/components/dc/ui';
 import { ensureDb, prisma } from '@/server/db';
 import { fmtDate } from '@/lib/format';

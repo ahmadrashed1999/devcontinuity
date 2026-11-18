@@ -1,16 +1,16 @@
-import { aiOrgEnabled } from '../features';
+import { aiOrgEnabled } from '@/server/features';
 import fs from 'node:fs';
 import { z } from 'zod';
-import { clip } from '../adapters/types';
-import { CallContext, complete, structured } from '../ai/gateway';
-import { audit, isKillSwitchOn, notify } from '../audit';
-import { getSetting, parseJson, prisma } from '../db';
-import { commitSandbox, currentHead, diffAgainst, addWorktree, mergeApproved, pushApproved, removeSandboxWorktree, sandboxPath } from '../git/write';
-import { createPullRequest, parseRepo } from '../github';
-import { getGitState } from '../git/git';
-import { inspectRepository } from '../intelligence/repo';
-import { slugify } from '../security/paths';
-import { runAndWait } from '../verify/runner';
+import { clip } from '@/server/adapters/types';
+import { CallContext, complete, structured } from '@/server/ai/gateway';
+import { audit, isKillSwitchOn, notify } from '@/server/audit';
+import { getSetting, parseJson, prisma } from '@/server/db';
+import { commitSandbox, currentHead, diffAgainst, addWorktree, mergeApproved, pushApproved, removeSandboxWorktree, sandboxPath } from '@/server/git/write';
+import { createPullRequest, parseRepo } from '@/server/github';
+import { getGitState } from '@/server/git/git';
+import { inspectRepository } from '@/server/intelligence/repo';
+import { slugify } from '@/server/security/paths';
+import { runAndWait } from '@/server/verify/runner';
 import { runAgentLoop } from './agent-loop';
 import { CLI_EXECUTORS, CliExecutor, runCliExecutor } from './executors';
 

@@ -101,8 +101,8 @@ async function waitFor<T>(fn: () => Promise<T | null | undefined | false>, ms = 
 describe('AI organization end-to-end', () => {
   it('runs order → plan → approval → work → review → owner merge', async () => {
     const { ensureDb, prisma, setSetting } = await import('../src/server/db');
-    const { seedOrg } = await import('../src/server/org/seed');
-    const engine = await import('../src/server/org/engine');
+    const { seedOrg } = await import('../src/modules/org/server/seed');
+    const engine = await import('../src/modules/org/server/engine');
     await ensureDb();
     const seeded = await seedOrg();
     expect(seeded.departments).toBe(17);

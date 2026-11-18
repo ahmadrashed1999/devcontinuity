@@ -24,6 +24,8 @@ import { extractZipSafely } from '@/server/zip';
 import { v2Routes } from '@/server/api/v2';
 import { liveRoutes } from '@/server/api/live';
 import { DEMO_MESSAGE, demoAllows, isDemo } from '@/server/demo';
+import { aiOrgEnabled } from '@/server/features';
+import { orgRoutes } from '@/modules/org/api';
 
 type Ctx = { params: Promise<{ path: string[] }> };
 type Handler = (req: NextRequest, m: string[]) => Promise<Response>;
@@ -389,6 +391,9 @@ const routes: [string, string, Handler][] = [
 ];
 
 routes.push(...v2Routes, ...liveRoutes);
+// Optional AI organization module: its routes only answer while the module is switched on.
+const ORG_HANDLERS = new Set<Handler>(orgRoutes.map((r) => r[2]));
+routes.push(...orgRoutes);
 
 /** From the phone (via the Cloudflare tunnel) the API is read-only, except answering decisions when the owner allows it. */
 async function remoteAllowed(method: string, segs: string[]): Promise<boolean> {
@@ -424,6 +429,7 @@ async function dispatch(method: string, req: NextRequest, ctx: Ctx): Promise<Res
   try {
     if (isDemo() && !demoAllows(method, segs)) return json({ error: DEMO_MESSAGE, demo: true }, 403);
     await ensureDb();
+    if (ORG_HANDLERS.has(found.h) && !(await aiOrgEnabled())) return json({ error: 'The AI organization module is switched off (Settings → Features).' }, 404);
     if (req.headers.get('x-dc-remote') === '1' && !(await remoteAllowed(method, segs))) return json({ error: 'Remote access is read-only. Do this from the PC, or allow remote approvals in Settings.' }, 403);
     return await found.h(req, found.m);
   } catch (e) {

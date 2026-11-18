@@ -13,9 +13,9 @@ import path from 'node:path';
 import { dataPath, ensureDir } from '../src/server/config';
 import { disconnectDb, ensureDb, prisma, setSetting } from '../src/server/db';
 import { aiOrgEnabled } from '../src/server/features';
-import { abortAll, activeCount, tick } from '../src/server/org/engine';
-import { schedulerTick } from '../src/server/org/scheduler';
-import { seedOrg } from '../src/server/org/seed';
+import { abortAll, activeCount, tick } from '../src/modules/org/server/engine';
+import { schedulerTick } from '../src/server/scheduler';
+import { seedOrg } from '../src/modules/org/server/seed';
 import { AutoSync } from '../src/server/sync/watcher';
 
 const logFile = path.join(ensureDir(dataPath('logs')), 'orchestrator.log');

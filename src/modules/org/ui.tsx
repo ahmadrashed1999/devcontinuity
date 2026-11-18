@@ -7,7 +7,7 @@ import { ChevronDown, ChevronRight, Loader2, Send } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ago, fmtDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { Md, VoiceButton } from './common';
+import { Md, VoiceButton } from '@/components/dc/common';
 
 export interface Decision {
   id: string;

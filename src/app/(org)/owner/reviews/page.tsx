@@ -1,4 +1,4 @@
-import { DecisionCard, type Decision } from '@/components/dc/org-ui';
+import { DecisionCard, type Decision } from '@/modules/org/ui';
 import { Empty, PageHeader } from '@/components/dc/ui';
 import { ensureDb, prisma } from '@/server/db';
 import { getT } from '@/lib/server-i18n';

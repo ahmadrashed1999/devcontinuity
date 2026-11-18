@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ActionButton } from '@/components/dc/actions';
 import { Md } from '@/components/dc/common';
-import { DecisionCard, type Decision, OrderComposer } from '@/components/dc/org-ui';
+import { DecisionCard, type Decision, OrderComposer } from '@/modules/org/ui';
 import { Empty, PageHeader, Panel, Pill } from '@/components/dc/ui';
 import { ensureDb, parseJson, prisma } from '@/server/db';
 import { ago, fmtDate } from '@/lib/format';

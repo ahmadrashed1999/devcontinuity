@@ -1,12 +1,11 @@
-import { aiOrgEnabled } from '../features';
-import { audit, notify } from '../audit';
-import { parseJson, prisma } from '../db';
-import { buildDigest } from '../digest';
-import { analyzeWorktrees } from '../git/worktrees';
-import { runImport, silentReporter } from '../import/importer';
-import { isLocked, withLock } from '../lock';
-import { startVerification } from '../verify/runner';
-import { createOrder } from './engine';
+import { aiOrgEnabled } from './features';
+import { audit, notify } from './audit';
+import { parseJson, prisma } from './db';
+import { buildDigest } from './digest';
+import { analyzeWorktrees } from './git/worktrees';
+import { runImport, silentReporter } from './import/importer';
+import { isLocked, withLock } from './lock';
+import { startVerification } from './verify/runner';
 
 export interface Timing {
   every: 'day' | 'week' | 'hours';
@@ -64,6 +63,8 @@ export async function runScheduleAction(action: string, payload: Record<string, 
     }
     case 'order': {
       if (!(await aiOrgEnabled())) return 'skipped: the AI organization is turned off (Settings → Features)';
+      // The AI organization is an optional module: loaded only when it is switched on.
+      const { createOrder } = await import('@/modules/org/server/engine');
       const o = await createOrder({ instruction: String(payload.instruction ?? ''), projectId: (payload.projectId as string) || null, lang: String(payload.lang ?? 'en') });
       return `order created ${o.id} (plan will come to you for approval)`;
     }

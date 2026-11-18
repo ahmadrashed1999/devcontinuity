@@ -1,11 +1,11 @@
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { CallContext, Msg, Part, ToolDef, chat } from '../ai/gateway';
-import { getSetting } from '../db';
-import { safeJoin } from '../security/paths';
-import { redactSecrets } from '../security/redact';
-import { validateCommand } from '../verify/runner';
+import { CallContext, Msg, Part, ToolDef, chat } from '@/server/ai/gateway';
+import { getSetting } from '@/server/db';
+import { safeJoin } from '@/server/security/paths';
+import { redactSecrets } from '@/server/security/redact';
+import { validateCommand } from '@/server/verify/runner';
 
 /**
  * Built-in coding agent used by "api" executors. It can only see and change files inside its own

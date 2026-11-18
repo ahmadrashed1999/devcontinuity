@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { KillSwitch, Md } from '@/components/dc/common';
-import { DecisionCard, type Decision, OrderComposer } from '@/components/dc/org-ui';
+import { DecisionCard, type Decision, OrderComposer } from '@/modules/org/ui';
 import { ActionButton } from '@/components/dc/actions';
 import { PageHeader, Panel, Stat } from '@/components/dc/ui';
 import { getBudget, spentThisMonth } from '@/server/ai/gateway';
 import { ensureDb, getSetting, prisma } from '@/server/db';
-import { seedOrg } from '@/server/org/seed';
+import { seedOrg } from '@/modules/org/server/seed';
 import { ago, fmtNum } from '@/lib/format';
 import { getT } from '@/lib/server-i18n';
 
