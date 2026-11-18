@@ -98,6 +98,8 @@ const en = {
   allAgents: 'All agents',
   eventsWord: 'events',
   days14: '14 days',
+  demoBadge: 'Demo',
+  demoRibbon: 'Read-only, fictional data. Nothing you click here changes anything. Run it on your own machine with',
 };
 
 const ar: typeof en = {
@@ -198,6 +200,8 @@ const ar: typeof en = {
   allAgents: 'كل الوكلاء',
   eventsWord: 'حدث',
   days14: '14 يومًا',
+  demoBadge: 'تجربة',
+  demoRibbon: 'للقراءة فقط وبيانات وهمية، لا شيء تضغطه هنا يغيّر أي شيء. شغّله على جهازك بالأمر',
 };
 
 export const DICT = { en, ar };
