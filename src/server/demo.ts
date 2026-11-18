@@ -27,7 +27,9 @@ const BLOCKED_GET: RegExp[] = [
 
 /** Whether the demo serves this API call. Only reads are allowed, minus the host-revealing ones. */
 export function demoAllows(method: string, segs: string[]): boolean {
-  if (method !== 'GET') return false;
   const p = segs.join('/');
+  // Rendering a handoff package for review writes nothing.
+  if (method === 'POST' && p === 'handoffs/preview') return true;
+  if (method !== 'GET') return false;
   return !BLOCKED_GET.some((re) => re.test(p));
 }

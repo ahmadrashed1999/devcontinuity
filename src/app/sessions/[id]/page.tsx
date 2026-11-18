@@ -55,7 +55,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<'/
           </div>
         </div>
       )}
-      {tab === 'continue' && <Panel title="Continue exactly where this session stopped"><p className="mb-4 text-sm text-muted-foreground">The briefing focuses on this session: its last request, last response, files it changed and errors after the last request, plus the project&apos;s current Git state.</p><ContinuePanel sessionId={id} projectId={s.projectId ?? undefined} /></Panel>}
+      {tab === 'continue' && <Panel title="Continue exactly where this session stopped"><p className="mb-4 text-sm text-muted-foreground">The briefing focuses on this session: its last request, last response, files it changed and errors after the last request, plus the project&apos;s current Git state.</p><ContinuePanel sessionId={id} projectId={s.projectId ?? undefined} initialAgent={typeof sp.agent === 'string' ? sp.agent : undefined} /></Panel>}
       {tab === 'details' && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Panel title="Session"><KV items={[['Session id', <span key="a" className="font-mono text-xs">{s.externalId}</span>], ['Working directory', s.cwd], ['Worktree', s.worktree], ['Branch', s.gitBranch], ['Models', parseJson<string[]>(s.models, []).join(', ')], ['Agent version', s.agentVersion], ['Events', fmtNum(s.eventCount)], ['User prompts', s.userMessageCount], ['Assistant messages', s.assistantMessageCount], ['Tool calls', `${s.toolCallCount} (${s.toolErrorCount} errors)`], ['Commands', s.commandCount], ['File operations', s.fileOpCount], ['Malformed lines', s.malformedLines], ['Unknown records', s.unknownRecordCount]]} /></Panel>
