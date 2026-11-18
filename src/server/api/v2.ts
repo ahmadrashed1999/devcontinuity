@@ -384,8 +384,9 @@ export const v2Routes: [string, string, Handler][] = [
   }],
   ['POST', 'projects/:id/rules/import', async (_r, [id]) => json({ rules: await importExistingRules(id) })],
   ['POST', 'projects/:id/rules/sync', async (req, [id]) => {
-    const t = (await body(req)).targets;
-    return json(await syncRules(id, Array.isArray(t) ? t.map(String) : []));
+    const b = await body(req);
+    const t = b.targets;
+    return json(await syncRules(id, Array.isArray(t) ? t.map(String) : [], { sharedMemory: b.sharedMemory === true }));
   }],
   ['GET', 'mcp', async () => json({ ...(await mcpInventory()), skills: skillInventory(), devcontinuity: devcontinuityMcpSnippets() })],
   ['POST', 'skills/copy', async (req) => {

@@ -60,10 +60,24 @@ export async function previewRules(projectId: string) {
   });
 }
 
-export async function syncRules(projectId: string, targetIds: string[]): Promise<{ file: string; action: string; backup?: string }[]> {
+/** Optional instruction that makes agents share memory through DevContinuity's MCP tools. */
+export const SHARED_MEMORY_RULE = [
+  '## Shared memory (DevContinuity)',
+  'Other AI agents also work in this project. If the DevContinuity MCP server is available:',
+  '- At the start of a task, call `project_context` with your working directory and read what the other agents did, their open tasks and last errors. Do not redo or undo their work without a reason.',
+  '- When you finish (or stop with work left), call `log_summary` with what you did, the files you changed and the next steps.',
+].join('\n');
+
+/** The text written inside the managed block. */
+export function rulesBody(rules: string | null | undefined, sharedMemory: boolean): string {
+  return [rules?.trim(), sharedMemory ? SHARED_MEMORY_RULE : ''].filter(Boolean).join('\n\n');
+}
+
+export async function syncRules(projectId: string, targetIds: string[], opts: { sharedMemory?: boolean } = {}): Promise<{ file: string; action: string; backup?: string }[]> {
   const p = await prisma().project.findUnique({ where: { id: projectId } });
   if (!p?.pathVerified || !fs.existsSync(p.rootPath)) throw new PathError('The project folder does not exist on this machine.');
-  if (!p.rules?.trim()) throw new PathError('Write the project rules first.');
+  const body = rulesBody(p.rules, !!opts.sharedMemory);
+  if (!body) throw new PathError('Write the project rules first, or include the shared-memory instruction.');
   const backupDir = path.join(dataPath('backups'), 'rules', safeFileName(p.slug), timestampSlug());
   const out: { file: string; action: string; backup?: string }[] = [];
   for (const t of TARGETS.filter((x) => targetIds.includes(x.id))) {
@@ -75,7 +89,7 @@ export async function syncRules(projectId: string, targetIds: string[]): Promise
       fs.writeFileSync(backup, existing, 'utf8');
     }
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, mergeBlock(existing, p.rules, t.id === 'cursor'), 'utf8');
+    fs.writeFileSync(f, mergeBlock(existing, body, t.id === 'cursor'), 'utf8');
     out.push({ file: f, action: existing == null ? 'created' : existing.includes(START) ? 'updated block' : 'appended block', backup });
   }
   await audit('owner', 'rules.sync', projectId, out);

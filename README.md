@@ -175,11 +175,33 @@ npm run dc -- backup
 
 `connect` registers DevContinuity's MCP server with the agent. The agent then gets:
 
-- `recent_activity`: what every agent did recently in this folder (call it before starting work).
+- `project_context`: shared memory (below). `recent_activity` is its short form.
 - `get_resume_briefing`, `search_history`, `list_sessions`, `list_tasks`.
 - `log_summary` / `log_event`: write into the shared log ("what I did, what is left").
 
-To register it by hand: command `node`, arguments `<repo>/node_modules/tsx/dist/cli.mjs <repo>/scripts/mcp.ts`.
+To register it by hand: command `npx`, arguments `-y devcontinuity mcp` (or, from a checkout, `node <repo>/node_modules/tsx/dist/cli.mjs <repo>/scripts/mcp.ts`).
+
+### Your agents finally share memory
+
+Every agent starts each task blind to what the others did. With DevContinuity connected, one call fixes that:
+
+```text
+project_context { directory: "/work/acme-shop-api" }
+
+# Shared memory: acme-shop-api
+## What each agent did
+### Claude Code (9 sessions)
+- 2026-11-18 19:31 · error · Add rate limiting to the public checkout endpoints
+  stopped because: You've hit your session limit · resets 5pm
+### Codex (3 sessions)
+- 2026-11-18 19:56 · finished · Rate limiting for checkout
+## Summaries agents logged (log_summary)
+## Open tasks
+## Last errors
+## Files changed recently
+```
+
+It lists, per agent, what was asked, how each session ended and the last answer, plus the summaries agents logged, open tasks, the last errors and recently changed files, in a few kilobytes. In **Projects → (project) → Rules**, tick *Shared memory* when you sync the rules: DevContinuity adds a short instruction to `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` and Cursor's rules telling every agent to call `project_context` when it starts and `log_summary` when it finishes.
 
 ## Any other tool
 

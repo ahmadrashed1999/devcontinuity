@@ -64,3 +64,17 @@ describe('launching agents on macOS and Linux', () => {
     expect(() => posixTerminalCommand('linux', '/x.sh', '/w', () => null)).toThrow(/No terminal/);
   });
 });
+
+describe('shared memory across agents', () => {
+  it('adds the project_context / log_summary instruction to the rules block only when asked', async () => {
+    const { mergeBlock, rulesBody, START } = await import('../src/server/rules');
+    expect(rulesBody('- Use pnpm', false)).toBe('- Use pnpm');
+    const both = rulesBody('- Use pnpm', true);
+    expect(both).toContain('- Use pnpm');
+    expect(both).toContain('`project_context`');
+    expect(both).toContain('`log_summary`');
+    expect(rulesBody('', true)).toContain('Shared memory');
+    expect(rulesBody(null, false)).toBe('');
+    expect(mergeBlock('# Mine\n', rulesBody(null, true)).startsWith(`# Mine\n\n${START}\n## Shared memory`)).toBe(true);
+  });
+});
