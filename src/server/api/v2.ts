@@ -17,6 +17,7 @@ import { startJob } from '../jobs/manager';
 import { abortAll, answerDecision, createCompare, createOrder } from '../org/engine';
 import { nextRun, runScheduleAction, Timing } from '../org/scheduler';
 import { seedOrg } from '../org/seed';
+import { mcpServer } from '../live/connect';
 import { copySkill, importExistingRules, mcpInventory, mcpSnippets, previewRules, skillInventory, syncRules, TARGETS } from '../rules';
 import { PathError, isInside, validateLocalPath } from '../security/paths';
 import { deleteSecret, listSecretNames, setSecret } from '../security/vault';
@@ -40,6 +41,12 @@ function need(cond: unknown, msg: string): asserts cond {
 }
 const EXECUTORS = ['api', 'claude-code', 'codex', 'opencode'];
 const AUTONOMY = ['L0', 'L1', 'L2', 'L3'];
+
+/** How to register DevContinuity's own MCP server, for this installation (checkout or npm). */
+function devcontinuityMcpSnippets() {
+  const m = mcpServer();
+  return mcpSnippets('devcontinuity', m.command, m.args);
+}
 
 export const v2Routes: [string, string, Handler][] = [
   // ---------- Organization ----------
@@ -287,7 +294,7 @@ export const v2Routes: [string, string, Handler][] = [
     const lastOk = await prisma().session.findFirst({ where: { agent: 'claude-code', endState: 'completed_turn' }, orderBy: { endedAt: 'desc' }, select: { endedAt: true } });
     const workersOnClaude = await prisma().role.count({ where: { executor: 'claude-code' } });
     const resumable = await prisma().session.count({ where: { agent: 'claude-code', isSubagent: false, endState: { in: ['interrupted_tool', 'interrupted_response', 'awaiting_assistant', 'api_error'] } } });
-    return json({ cli: claude, credentialsFilePresent: signedIn, lastLimit, lastOk, workersOnClaude, resumable, mcp: mcpSnippets('devcontinuity', 'npx', ['tsx', path.join(process.cwd(), 'scripts', 'mcp.ts').replace(/\\/g, '/')]) });
+    return json({ cli: claude, credentialsFilePresent: signedIn, lastLimit, lastOk, workersOnClaude, resumable, mcp: devcontinuityMcpSnippets() });
   }],
 
   // ---------- Ask my projects ----------
@@ -368,7 +375,7 @@ export const v2Routes: [string, string, Handler][] = [
     const t = (await body(req)).targets;
     return json(await syncRules(id, Array.isArray(t) ? t.map(String) : []));
   }],
-  ['GET', 'mcp', async () => json({ ...(await mcpInventory()), skills: skillInventory(), devcontinuity: mcpSnippets('devcontinuity', 'npx', ['tsx', path.join(process.cwd(), 'scripts', 'mcp.ts').replace(/\\/g, '/')]) })],
+  ['GET', 'mcp', async () => json({ ...(await mcpInventory()), skills: skillInventory(), devcontinuity: devcontinuityMcpSnippets() })],
   ['POST', 'skills/copy', async (req) => {
     const b = await body(req);
     return json({ copiedTo: await copySkill(String(b.from), String(b.skill), String(b.to)) });

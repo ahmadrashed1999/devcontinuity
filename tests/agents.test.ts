@@ -336,4 +336,26 @@ describe('connect / disconnect agent configs', () => {
     expect(cfg.mcpServers.devcontinuity.args[1]).toMatch(/scripts\/mcp\.ts$/);
     expect(cfg.telemetry).toBeUndefined();
   });
+
+  it('points npm installations at stable copies in the data folder, and still recognises them', async () => {
+    const { applyConnect, connectionStatus, planConnect } = await import('../src/server/live/connect');
+    const { dataDir } = await import('../src/server/config');
+    process.env.DEVCONTINUITY_PACKAGED = '1';
+    try {
+      const plan = planConnect('cursor');
+      const hooks = JSON.parse(plan.changes.find((c) => c.file.endsWith('hooks.json'))!.after!);
+      expect(hooks.hooks.stop[0].command).toMatch(/bin\/devcontinuity-hook\.mjs" cursor$/);
+      const hookCopy = path.join(dataDir(), 'bin', 'devcontinuity-hook.mjs');
+      expect(fs.readFileSync(hookCopy, 'utf8')).toContain(`const INSTALLED_DATA_DIR = ${JSON.stringify(dataDir())};`);
+      const mcp = JSON.parse(plan.changes.find((c) => c.file.endsWith('mcp.json'))!.after!).mcpServers.devcontinuity;
+      expect(mcp.args[0]).toMatch(/bin\/devcontinuity-mcp\.mjs$/);
+      expect(fs.readFileSync(path.join(dataDir(), 'bin', 'devcontinuity-mcp.mjs'), 'utf8')).toContain("'devcontinuity', 'mcp'");
+      applyConnect(plan);
+      expect(connectionStatus().find((c) => c.agent === 'cursor')).toMatchObject({ hooks: true, mcp: true });
+      applyConnect(planConnect('cursor', { remove: true }));
+      expect(connectionStatus().find((c) => c.agent === 'cursor')).toMatchObject({ hooks: false, mcp: false });
+    } finally {
+      delete process.env.DEVCONTINUITY_PACKAGED;
+    }
+  });
 });

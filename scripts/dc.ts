@@ -5,9 +5,10 @@ import path from 'node:path';
 import { disconnectDb, ensureDb, prisma } from '../src/server/db';
 import type { AgentId } from '../src/server/adapters/types';
 
+const CLI = process.env.DEVCONTINUITY_CLI_NAME || 'npm run dc --';
 const HELP = `DevContinuity CLI
 
-Usage: npm run dc -- <command> [options]
+Usage: ${CLI} <command> [options]
 
 Recovery
   scan [--agent <id>] [--json]            Read-only inventory of recoverable agent data
@@ -60,7 +61,7 @@ export async function findProject(ref: string) {
   const byId = await db.project.findFirst({ where: { OR: [{ id: ref }, { slug: ref }] } });
   if (byId) return byId;
   const matches = await db.project.findMany({ where: { OR: [{ name: { contains: ref } }, { rootPath: { contains: ref } }] }, orderBy: { lastActivityAt: 'desc' } });
-  if (matches.length === 0) throw new Error(`No project matches "${ref}". Run "npm run dc -- projects" to list them.`);
+  if (matches.length === 0) throw new Error(`No project matches "${ref}". Run "${CLI} projects" to list them.`);
   if (matches.length > 1) {
     const exact = matches.find((m) => m.name.toLowerCase() === ref.toLowerCase());
     if (exact) return exact;
@@ -102,7 +103,7 @@ async function main() {
   if (command === 'connect' || command === 'disconnect') {
     const { CONNECT_AGENTS, applyConnect, planConnect } = await import('../src/server/live/connect');
     const agent = positional[0] as (typeof CONNECT_AGENTS)[number];
-    if (!CONNECT_AGENTS.includes(agent)) throw new Error(`Usage: npm run dc -- ${command} <${CONNECT_AGENTS.join('|')}>`);
+    if (!CONNECT_AGENTS.includes(agent)) throw new Error(`Usage: ${CLI} ${command} <${CONNECT_AGENTS.join('|')}>`);
     const plan = planConnect(agent, { telemetry: !!flags.telemetry, remove: command === 'disconnect' });
     console.log(`${command === 'connect' ? 'Connect' : 'Disconnect'} ${plan.label}\n`);
     if (!plan.changes.length && !plan.commands.length) console.log('Nothing to change: already in the requested state.');

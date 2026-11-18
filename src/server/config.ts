@@ -5,7 +5,8 @@ import path from 'node:path';
 
 /** Root of all DevContinuity-owned data. Nothing outside this folder is ever written, except explicit drop-ins. */
 export function dataDir(): string {
-  const dir = process.env.DEVCONTINUITY_DATA_DIR?.trim() || path.join(process.cwd(), 'data');
+  // Same rules as scripts/paths.mjs: npm installations keep their data in ~/.devcontinuity.
+  const dir = process.env.DEVCONTINUITY_DATA_DIR?.trim() || (process.env.DEVCONTINUITY_PACKAGED === '1' ? path.join(os.homedir(), '.devcontinuity') : path.join(process.cwd(), 'data'));
   return path.resolve(dir);
 }
 

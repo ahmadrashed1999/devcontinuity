@@ -50,7 +50,26 @@ You use Claude Code in the morning, Codex after lunch, Antigravity or Cursor for
 
 ## Quick start
 
-You need **Node.js 22.5 or newer** and **Git**.
+You need **Node.js 22.5 or newer**.
+
+```bash
+npx devcontinuity
+```
+
+That is the whole install: it creates `~/.devcontinuity` (your data, nothing else is written), applies the database migrations, starts the web UI and the background sync, and opens **http://localhost:3210**. Every CLI command works the same way:
+
+```bash
+npx devcontinuity connect windsurf   # show the hook/MCP change; add --yes to apply it (a backup is made first)
+npx devcontinuity agents             # which agents are connected and what they logged
+npx devcontinuity search "rate limit"
+npx devcontinuity --port 4000 --no-open
+```
+
+Set `DEVCONTINUITY_DATA_DIR` to keep the data somewhere else. `npm install -g devcontinuity` gives you a permanent `devcontinuity` command.
+
+### From source
+
+You need Git as well.
 
 ```bash
 git clone https://github.com/ahmadrashed1999/devcontinuity.git

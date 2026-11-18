@@ -6,19 +6,30 @@
  *
  *   npm run app            # http://localhost:3210
  *   PORT=4000 npm run app
+ *
+ * "npx devcontinuity" runs this too (see bin/devcontinuity.mjs).
  */
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { APP_ROOT as root, prepareEnv } from './paths.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+prepareEnv();
 const port = process.env.PORT || '3210';
-const next = path.join(root, 'node_modules', 'next', 'dist', 'bin', 'next');
-const tsx = path.join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+const require = createRequire(path.join(root, 'package.json'));
+const resolve = (id) => {
+  try {
+    return require.resolve(id);
+  } catch {
+    return null;
+  }
+};
+const next = resolve('next/dist/bin/next');
+const tsx = resolve('tsx/cli');
 const distDir = process.env.NEXT_DIST_DIR || '.next';
 
-if (!fs.existsSync(next) || !fs.existsSync(tsx)) {
+if (!next || !tsx) {
   console.error('Dependencies are missing. Run "npm install" and "npm run setup" first.');
   process.exit(1);
 }
@@ -42,8 +53,9 @@ function start(name, args) {
   });
 }
 
-start('web', [next, 'start', '-p', port]);
-start('orchestrator', [tsx, path.join('scripts', 'orchestrator.ts')]);
+start('web', [next, 'start', '-p', port, ...(process.env.HOSTNAME_BIND ? ['-H', process.env.HOSTNAME_BIND] : [])]);
+// The read-only demo has nothing to sync.
+if (process.env.DEVCONTINUITY_DEMO !== '1') start('orchestrator', [tsx, path.join(root, 'scripts', 'orchestrator.ts')]);
 console.log(`[devcontinuity] running at http://localhost:${port}  (Ctrl+C to stop)`);
 
 function shutdown() {

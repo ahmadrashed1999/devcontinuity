@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { apiToken, dataPath, ensureDir, homeDir, timestampSlug } from '../config';
+import { apiToken, dataDir, dataPath, ensureDir, homeDir, timestampSlug } from '../config';
 import { listLiveStreams } from './store';
 
 /**
@@ -31,20 +31,73 @@ export interface ConnectPlan {
 }
 
 const LABELS: Record<ConnectAgent, string> = { 'gemini-cli': 'Gemini CLI', cursor: 'Cursor', windsurf: 'Windsurf', antigravity: 'Antigravity', 'claude-code': 'Claude Code', codex: 'Codex' };
-const MARK = 'scripts/hook.mjs';
+/** Our hook / MCP entries, whether they point at a checkout or at the copies an npm installation keeps in its data folder. */
+const HOOK_MARKS = ['scripts/hook.mjs', 'devcontinuity-hook.mjs'];
+const MCP_MARKS = ['scripts/mcp.ts', 'devcontinuity-mcp.mjs'];
 const PORT = Number(process.env.PORT) || 3210;
 
 type Rec = Record<string, unknown>;
 
 export function appRoot(): string {
   const root = process.env.DEVCONTINUITY_APP_ROOT?.trim() || process.cwd();
-  if (!fs.existsSync(path.join(root, 'scripts', 'hook.mjs'))) throw new Error(`DevContinuity scripts not found under ${root}. Run this from the DevContinuity folder.`);
+  if (!fs.existsSync(path.join(root, 'scripts', 'hook.mjs'))) throw new Error(`DevContinuity scripts not found under ${root}. Run this from the DevContinuity folder (or use "npx devcontinuity").`);
   return root;
 }
 
+/** Installed from npm/npx: the package folder can disappear (npx cache), so agents get stable copies in the data folder. */
+export const isPackagedInstall = () => process.env.DEVCONTINUITY_PACKAGED === '1';
+
 const fwd = (p: string) => p.replace(/\\/g, '/');
-export const hookCommand = (agent: string) => `node "${fwd(path.join(appRoot(), 'scripts', 'hook.mjs'))}" ${agent}`;
-export const mcpServer = () => ({ command: 'node', args: [fwd(path.join(appRoot(), 'node_modules', 'tsx', 'dist', 'cli.mjs')), fwd(path.join(appRoot(), 'scripts', 'mcp.ts'))] });
+
+/** tsx's CLI, wherever npm put it (inside the checkout, or hoisted next to the package). */
+function tsxCli(root: string): string {
+  for (const p of [path.join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs'), path.join(root, '..', 'tsx', 'dist', 'cli.mjs')]) if (fs.existsSync(p)) return p;
+  return path.join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+}
+
+/** Source of <data>/bin/devcontinuity-mcp.mjs: runs this installation's MCP server, or "npx devcontinuity mcp" once it is gone. */
+export function mcpLauncher(root: string, data: string, tsx: string): string {
+  return `#!/usr/bin/env node
+// Written by DevContinuity ("connect"). Starts its MCP server for this data folder.
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+const APP_ROOT = ${JSON.stringify(root)};
+const TSX = ${JSON.stringify(tsx)};
+const env = { ...process.env, DEVCONTINUITY_DATA_DIR: process.env.DEVCONTINUITY_DATA_DIR || ${JSON.stringify(data)}, DEVCONTINUITY_PACKAGED: '1' };
+const local = fs.existsSync(path.join(APP_ROOT, 'scripts', 'mcp.ts')) && fs.existsSync(TSX);
+const win = process.platform === 'win32';
+const child = local
+  ? spawn(process.execPath, [TSX, path.join(APP_ROOT, 'scripts', 'mcp.ts')], { stdio: 'inherit', env })
+  : spawn(win ? 'npx.cmd' : 'npx', ['-y', 'devcontinuity', 'mcp'], { stdio: 'inherit', env, shell: win });
+child.on('exit', (code) => process.exit(code ?? 0));
+`;
+}
+
+/**
+ * Writes <data>/bin/devcontinuity-hook.mjs (the dependency-free hook recorder, pinned to this data
+ * folder) and <data>/bin/devcontinuity-mcp.mjs. Rewritten on every connect so they follow upgrades.
+ */
+export function writeStableEntryPoints(): { hook: string; mcp: string } {
+  const root = appRoot();
+  const dir = ensureDir(path.join(dataDir(), 'bin'));
+  const hook = path.join(dir, 'devcontinuity-hook.mjs');
+  const mcp = path.join(dir, 'devcontinuity-mcp.mjs');
+  const src = fs.readFileSync(path.join(root, 'scripts', 'hook.mjs'), 'utf8');
+  fs.writeFileSync(hook, src.replace('const INSTALLED_DATA_DIR = null;', `const INSTALLED_DATA_DIR = ${JSON.stringify(dataDir())};`), 'utf8');
+  fs.writeFileSync(mcp, mcpLauncher(root, dataDir(), tsxCli(root)), 'utf8');
+  return { hook, mcp };
+}
+
+export function hookCommand(agent: string): string {
+  if (isPackagedInstall()) return `node "${fwd(writeStableEntryPoints().hook)}" ${agent}`;
+  return `node "${fwd(path.join(appRoot(), 'scripts', 'hook.mjs'))}" ${agent}`;
+}
+
+export function mcpServer(): { command: string; args: string[] } {
+  if (isPackagedInstall()) return { command: 'node', args: [fwd(writeStableEntryPoints().mcp)] };
+  return { command: 'node', args: [fwd(tsxCli(appRoot())), fwd(path.join(appRoot(), 'scripts', 'mcp.ts'))] };
+}
 const otlpBase = () => `http://localhost:${PORT}/api/otlp`;
 
 function configPaths() {
@@ -85,7 +138,10 @@ function parseConfig(text: string | null, file: string): Rec {
   }
 }
 
-const isOurs = (v: unknown) => JSON.stringify(v ?? '').includes(MARK);
+const isOurs = (v: unknown) => {
+  const text = JSON.stringify(v ?? '');
+  return HOOK_MARKS.some((m) => text.includes(m));
+};
 
 /** Claude Code / Gemini CLI layout: hooks[event] = [{ matcher?, hooks: [{ type, command }] }]. */
 function setNestedHooks(cfg: Rec, events: string[], command: string, remove: boolean, toolEvents: Set<string>) {
@@ -189,7 +245,7 @@ export function planConnect(agent: ConnectAgent, opts: { telemetry?: boolean; re
       break;
     }
     case 'claude-code': {
-      plan.commands.push(remove ? 'claude mcp remove --scope user devcontinuity' : `claude mcp add --scope user devcontinuity -- ${mcp.command} "${mcp.args[0]}" "${mcp.args[1]}"`);
+      plan.commands.push(remove ? 'claude mcp remove --scope user devcontinuity' : `claude mcp add --scope user devcontinuity -- ${mcp.command} ${mcp.args.map((a) => `"${a}"`).join(' ')}`);
       plan.notes.push('Claude Code transcripts are already imported automatically; the MCP server adds summaries and cross-agent history.');
       if (opts.telemetry || remove) {
         const keys: Rec = { CLAUDE_CODE_ENABLE_TELEMETRY: '1', OTEL_LOGS_EXPORTER: 'otlp', OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json', OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: `${otlpBase()}/v1/logs`, OTEL_EXPORTER_OTLP_HEADERS: `Authorization=Bearer ${apiToken()}`, OTEL_LOG_USER_PROMPTS: '1' };
@@ -261,7 +317,10 @@ export interface AgentConnection {
 /** What is connected today, read from the agents' config files and the live spool. */
 export function connectionStatus(): AgentConnection[] {
   const p = configPaths();
-  const has = (file: string, needle: string) => (read(file) ?? '').includes(needle);
+  const has = (file: string, needles: string | string[]) => {
+    const text = read(file) ?? '';
+    return (Array.isArray(needles) ? needles : [needles]).some((n) => text.includes(n));
+  };
   const streams = listLiveStreams();
   return CONNECT_AGENTS.map((agent) => {
     const mine = streams.filter((s) => s.agent === agent);
@@ -269,17 +328,17 @@ export function connectionStatus(): AgentConnection[] {
     const base = { agent, label: LABELS[agent], liveSessions: mine.length, lastLiveEvent: last?.toISOString() ?? null };
     switch (agent) {
       case 'gemini-cli':
-        return { ...base, hooks: has(p.geminiSettings, MARK), mcp: has(p.geminiSettings, 'scripts/mcp.ts'), telemetry: has(p.geminiSettings, '/api/otlp') };
+        return { ...base, hooks: has(p.geminiSettings, HOOK_MARKS), mcp: has(p.geminiSettings, MCP_MARKS), telemetry: has(p.geminiSettings, '/api/otlp') };
       case 'cursor':
-        return { ...base, hooks: has(p.cursorHooks, MARK), mcp: has(p.cursorMcp, 'scripts/mcp.ts'), telemetry: false };
+        return { ...base, hooks: has(p.cursorHooks, HOOK_MARKS), mcp: has(p.cursorMcp, MCP_MARKS), telemetry: false };
       case 'windsurf':
-        return { ...base, hooks: has(p.windsurfHooks, MARK), mcp: has(p.windsurfMcp, 'scripts/mcp.ts'), telemetry: false };
+        return { ...base, hooks: has(p.windsurfHooks, HOOK_MARKS), mcp: has(p.windsurfMcp, MCP_MARKS), telemetry: false };
       case 'antigravity':
-        return { ...base, hooks: false, mcp: has(p.antigravityMcp, 'scripts/mcp.ts'), telemetry: false };
+        return { ...base, hooks: false, mcp: has(p.antigravityMcp, MCP_MARKS), telemetry: false };
       case 'claude-code':
-        return { ...base, hooks: false, mcp: has(path.join(homeDir(), '.claude.json'), 'scripts/mcp.ts'), telemetry: has(p.claudeSettings, '/api/otlp') };
+        return { ...base, hooks: false, mcp: has(path.join(homeDir(), '.claude.json'), MCP_MARKS), telemetry: has(p.claudeSettings, '/api/otlp') };
       case 'codex':
-        return { ...base, hooks: false, mcp: has(p.codexConfig, 'scripts/mcp.ts'), telemetry: has(p.codexConfig, '/api/otlp') };
+        return { ...base, hooks: false, mcp: has(p.codexConfig, MCP_MARKS), telemetry: has(p.codexConfig, '/api/otlp') };
     }
   });
 }
