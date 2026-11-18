@@ -1,5 +1,7 @@
 import { Check, Minus } from 'lucide-react';
-import { LinkButton, PageHeader, Panel, Pill } from '@/components/dc/ui';
+import { LinkButton, PageHeader, Panel, Pill, Tabs } from '@/components/dc/ui';
+import { AgentCompare } from '@/components/dc/agent-compare';
+import { agentComparison } from '@/server/compare';
 import { ADAPTERS } from '@/server/adapters';
 import { ensureDb, prisma } from '@/server/db';
 import { AGENT_COLORS, ago, fmtNum } from '@/lib/format';
@@ -10,14 +12,26 @@ import { ConnectedAgents } from '@/components/dc/live-ui';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AgentsPage() {
+export default async function AgentsPage({ searchParams }: PageProps<'/agents'>) {
   await ensureDb();
   const { t } = await getT();
+  const tab = (await searchParams).tab === 'compare' ? 'compare' : 'connections';
+  if (tab === 'compare') {
+    const cmp = await agentComparison(90);
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t.agents} />
+        <Tabs base="/agents" active="compare" tabs={[{ id: 'connections', label: t.connectionsTab }, { id: 'compare', label: t.compareTab }]} />
+        <AgentCompare agents={cmp.agents} days={cmp.days} t={t} />
+      </div>
+    );
+  }
   const counts = await prisma().session.groupBy({ by: ['agent'], _count: true, _max: { endedAt: true }, _sum: { eventCount: true } });
   const caps: [keyof (typeof ADAPTERS)[number]['capabilities'], string][] = [['toolCalls', 'Tool calls'], ['toolResults', 'Tool results'], ['thinking', 'Thinking'], ['subagents', 'Subagents'], ['fileSnapshots', 'File snapshots'], ['todos', 'Todos'], ['gitMetadata', 'Git metadata']];
   return (
     <div className="space-y-6">
       <PageHeader title={t.agents} subtitle="Every AI coding agent's work in one log. Agents with readable history files are imported automatically; the rest are connected through hooks, OpenTelemetry or MCP." actions={<LinkButton href="/import" variant="primary">Import sessions</LinkButton>} />
+      <Tabs base="/agents" active="connections" tabs={[{ id: 'connections', label: t.connectionsTab }, { id: 'compare', label: t.compareTab }]} />
       <Panel title="Live connections">
         <ConnectedAgents />
       </Panel>

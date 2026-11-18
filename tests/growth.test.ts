@@ -78,3 +78,51 @@ describe('shared memory across agents', () => {
     expect(mergeBlock('# Mine\n', rulesBody(null, true)).startsWith(`# Mine\n\n${START}\n## Shared memory`)).toBe(true);
   });
 });
+
+describe('AI Coding Wrapped', () => {
+  it('parses month and year periods in local time', async () => {
+    const { parsePeriod } = await import('../src/server/wrapped');
+    const m = parsePeriod('2026-11');
+    expect([m.kind, m.start.getMonth(), m.end.getMonth(), m.end.getFullYear()]).toEqual(['month', 10, 11, 2026]);
+    expect(parsePeriod('2026-12').end.getFullYear()).toBe(2027);
+    expect(parsePeriod('2026').kind).toBe('year');
+    expect(parsePeriod('nonsense', new Date(2026, 4, 9)).key).toBe('2026-05');
+  });
+
+  it('aggregates sessions, rates, tokens, cost, days, projects and the longest session', async () => {
+    const { aggregateWrapped, parsePeriod } = await import('../src/server/wrapped');
+    const at = (d: number, h: number) => new Date(2026, 10, d, h);
+    const row = (id: string, agent: string, endState: string, d: number, meta: unknown = null, mins = 30, project: string | null = 'shop') => ({ id, agent, title: id, projectName: project, startedAt: new Date(at(d, 10).getTime() - mins * 60_000), endedAt: at(d, 10), endState, userMessageCount: 2, toolCallCount: 5, fileOpCount: 1, providerMeta: meta ? JSON.stringify(meta) : null });
+    const s = aggregateWrapped([
+      row('a', 'claude-code', 'completed_turn', 3, { usage: { inputTokens: 1000, outputTokens: 200, costUsd: null }, cost: { totalCostUSD: 1.5 } }, 90),
+      row('b', 'claude-code', 'api_error', 3),
+      row('c', 'codex', 'interrupted_tool', 4, { usage: { inputTokens: 10, outputTokens: 5 } }, 20, 'docs'),
+      row('d', 'codex', 'completed_turn', 4, null, 5000),
+      row('e', 'cursor', 'empty', 4),
+    ], parsePeriod('2026-11'), [{ name: 'Edit', calls: 9 }]);
+    expect(s.totals).toMatchObject({ sessions: 4, prompts: 8, toolCalls: 20, agents: 2, projects: 2, activeDays: 2, tokens: 1215, costUsd: 1.5, costSessions: 1 });
+    const claude = s.agents.find((a) => a.agent === 'claude-code')!;
+    expect([claude.finishRate, claude.errorRate, claude.interruptRate]).toEqual([0.5, 0.5, 0]);
+    expect(s.agents.find((a) => a.agent === 'codex')!.costUsd).toBeNull();
+    expect(s.topProjects[0]).toEqual({ name: 'shop', sessions: 3, agents: 2 });
+    expect(s.longest).toMatchObject({ id: 'd', minutes: 720 });
+    expect(s.byWeekday.reduce((a, b) => a + b, 0)).toBe(4);
+    expect(s.topTools).toEqual([{ name: 'Edit', calls: 9 }]);
+  });
+});
+
+describe('agent comparison', () => {
+  it('computes rates per agent and says "not enough data" instead of ranking small samples', async () => {
+    const { compareAgents } = await import('../src/server/compare');
+    const s = (agent: string, endState: string, cost?: number) => ({ agent, endState, userMessageCount: 2, toolCallCount: 6, filesChanged: 3, providerMeta: cost ? JSON.stringify({ usage: { costUsd: cost } }) : null });
+    const rows = [
+      ...Array.from({ length: 6 }, (_, i) => s('claude-code', i < 3 ? 'completed_turn' : i < 5 ? 'interrupted_tool' : 'api_error', i < 3 ? 1 + i : undefined)),
+      s('cursor', 'completed_turn'), s('cursor', 'completed_turn'), s('cursor', 'empty'),
+    ];
+    const [claude, cursor] = compareAgents(rows);
+    expect(claude).toMatchObject({ agent: 'claude-code', sessions: 6, enoughData: true, completionRate: 0.5, toolsPerPrompt: 3, filesPerSession: 3, costPerCompleted: 2, costedSessions: 3 });
+    expect(claude.interruptionRate).toBeCloseTo(2 / 6);
+    expect(claude.errorRate).toBeCloseTo(1 / 6);
+    expect(cursor).toMatchObject({ agent: 'cursor', sessions: 2, enoughData: false, completionRate: null, costPerCompleted: null });
+  });
+});
