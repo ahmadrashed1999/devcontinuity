@@ -41,7 +41,7 @@
     "dc": "tsx scripts/dc.ts",
     "mcp": "tsx scripts/mcp.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "orchestrator": "tsx scripts/orchestrator.ts",
     "tray": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tray.ps1",
     "startup:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/startup.ps1 -Install",
