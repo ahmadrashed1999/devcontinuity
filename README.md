@@ -1,3 +1,14 @@
+<p align="center">
+  <img src="docs/images/banner.png" alt="DevContinuity: one local log for every AI coding agent" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/ahmadrashed1999/devcontinuity/actions/workflows/ci.yml"><img src="https://github.com/ahmadrashed1999/devcontinuity/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-6366f1" alt="MIT license" /></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D22.5-06b6d4" alt="Node 22.5+" />
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-334155" alt="Windows, macOS, Linux" />
+</p>
+
 # DevContinuity
 
 **One local log for every AI coding agent.**
@@ -9,6 +20,29 @@ You use Claude Code in the morning, Codex after lunch, Antigravity or Cursor for
 - **Continue anywhere:** a ready-to-paste briefing (last request, last answer, changed files, errors, Git state) lets another agent take over a project or session.
 - **Trust, but verify:** agent "I'm done" claims are tracked as claims; DevContinuity checks recorded edits and commits against your actual files and Git.
 - **Search everything:** full-text search over every prompt, answer, tool call, command and error, in any language.
+
+## Screenshots
+
+**Overview:** activity per agent over two weeks, the latest sessions from every agent, and what needs your attention.
+
+![Overview: every agent's activity on one page](docs/images/overview.png)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/sessions.png" alt="Sessions from every agent, filterable by agent, project, outcome and date" /><br /><sub><b>Sessions:</b> every agent in one list; one click filters by agent.</sub></td>
+    <td width="50%"><img src="docs/images/session.png" alt="A session's full timeline: prompts, tool calls, results, edits" /><br /><sub><b>Session timeline:</b> prompts, tool calls, output and files, with one-click continue.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/agents.png" alt="Connected agents: hooks, MCP and telemetry per agent" /><br /><sub><b>Connected agents:</b> connect Gemini CLI, Cursor, Windsurf and more with a previewed, reversible change.</sub></td>
+    <td width="50%"><img src="docs/images/search.png" alt="Full-text search across all agents" /><br /><sub><b>Search:</b> any prompt, answer, command or error, across every agent.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/arabic.png" alt="Arabic, right-to-left interface" /><br /><sub><b>English and Arabic</b>, with a full right-to-left layout.</sub></td>
+    <td width="50%" align="center"><img src="docs/images/mobile.png" alt="Phone layout" width="240" /><br /><sub><b>Works on phones.</b></sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots use the fictional demo workspace from <code>npm run demo</code>, not real history.</sub>
 
 > Status: works well day to day on Windows; macOS and Linux run the same web app and background service (the tray icon is Windows-only). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#limitations) for what is and is not covered per agent.
 

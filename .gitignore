@@ -51,3 +51,6 @@ next-env.d.ts
 
 # Isolated verification builds (NEXT_DIST_DIR)
 /.next-*/
+
+# Generated demo workspace (npm run demo)
+/demo/

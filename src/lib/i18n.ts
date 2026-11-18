@@ -97,6 +97,7 @@ const en = {
   searchSessions: 'Title, first prompt or id',
   allAgents: 'All agents',
   eventsWord: 'events',
+  days14: '14 days',
 };
 
 const ar: typeof en = {
@@ -196,6 +197,7 @@ const ar: typeof en = {
   searchSessions: 'العنوان أو أول طلب أو المعرّف',
   allAgents: 'كل الوكلاء',
   eventsWord: 'حدث',
+  days14: '14 يومًا',
 };
 
 export const DICT = { en, ar };

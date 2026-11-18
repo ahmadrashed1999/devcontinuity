@@ -46,7 +46,9 @@
     "tray": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tray.ps1",
     "startup:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/startup.ps1 -Install",
     "startup:remove": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/startup.ps1 -Remove",
-    "app": "node scripts/serve.mjs"
+    "app": "node scripts/serve.mjs",
+    "demo": "node scripts/demo/make-demo.mjs",
+    "demo:screenshots": "node scripts/demo/screenshots.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

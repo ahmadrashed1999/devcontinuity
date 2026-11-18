@@ -47,6 +47,10 @@ An agent is one module in `src/server/adapters/` implementing `AgentAdapter` (`t
 
 If the agent has no readable history but supports hooks, add its payload dialect to `src/server/live/normalize.ts` and a `connect` recipe to `src/server/live/connect.ts` instead.
 
+## Demo workspace and screenshots
+
+`npm run demo` builds a fictional workspace (four projects, two weeks of sessions from nine agents, each in that agent's real on-disk format) and imports it into `./demo`, never touching your own data. `npm run demo -- --serve` serves it on port 3299, and `npm run demo:screenshots` (with the demo running) regenerates every image in `docs/images/`, including the banner, using any installed Chrome or Edge. Use `DEMO_DIR=/tmp/dc-demo` for short paths in screenshots.
+
 ## Translations
 
 UI strings live in `src/lib/i18n.ts` (English and Arabic). Add a key to both dictionaries; server components use `getT()`, client components use `useT()` from `components/dc/lang.tsx`.

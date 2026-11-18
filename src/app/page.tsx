@@ -73,7 +73,7 @@ export default async function Overview() {
       <PageHeader
         title={t.dashboard}
         subtitle={<>{t.overviewSubtitle}{syncAt && <span className="text-slate-500"> · {t.lastImport} {ago(syncAt, lang)}</span>}</>}
-        actions={<><LinkButton href="/agents"><Plug className="size-4" /> {t.connectMore}</LinkButton><LinkButton href="/handoff" variant="primary"><ArrowRightLeft className="size-4" /> {t.continueCta}</LinkButton></>}
+        actions={<><LinkButton href="/agents"><Plug className="size-4" /> {t.connectMore}</LinkButton><LinkButton href="/handoff" variant="primary" className="xl:hidden"><ArrowRightLeft className="size-4" /> {t.continueCta}</LinkButton></>}
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -98,7 +98,7 @@ export default async function Overview() {
               </div>
               <div className={`mt-3 ${AGENT_COLORS[a.agent] ?? 'text-slate-400'}`}><Sparkline values={a.days} /></div>
               <div className="mt-2 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-                <span><span className="text-base font-semibold tabular-nums text-white">{fmtNum(a.days.reduce((x, y) => x + y, 0))}</span> / {DAYS}d · {fmtNum(a.total)} {t.sessionsWord}</span>
+                <span><span className="text-base font-semibold tabular-nums text-white">{fmtNum(a.days.reduce((x, y) => x + y, 0))}</span> / {t.days14} · {fmtNum(a.total)} {t.sessionsWord}</span>
                 <span className="whitespace-nowrap">{ago(a.last, lang)}</span>
               </div>
             </Link>
