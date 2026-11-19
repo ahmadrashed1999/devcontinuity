@@ -97,6 +97,33 @@ schedule(2.2).forEach((n, day) => {
   }
 });
 
+// The headline scenario: Claude Code stops on its usage limit in acme-shop-api 25 minutes ago, with
+// nothing newer in that project, so the Overview offers to continue it in another agent.
+{
+  const cwd = cwdOf('acme-shop-api');
+  const sid = '7c1d2e3f-0a4b-4c5d-8e6f-a1b2c3d4e5f6';
+  const base = { sessionId: sid, cwd, version: '2.3.1', gitBranch: 'feature/rate-limit', userType: 'external', isSidechain: false };
+  const t0 = new Date(NOW - 41 * 60_000);
+  const ts = (k) => new Date(t0.getTime() + k * 60_000).toISOString();
+  const prompt = 'Add rate limiting to the public checkout endpoints';
+  const L = [{ ...base, type: 'user', uuid: id(), timestamp: ts(0), message: { role: 'user', content: `${prompt}. Use a sliding window per API key, 60 requests per minute, and return 429 with Retry-After.` } }];
+  const steps = [
+    ['Read', { file_path: path.join(cwd, 'src/routes/checkout.ts') }, 'export const checkoutRouter = …'],
+    ['Write', { file_path: path.join(cwd, 'src/middleware/rateLimit.ts'), content: 'export function rateLimit() {}' }, 'File created'],
+    ['Edit', { file_path: path.join(cwd, 'src/routes/checkout.ts'), old_string: 'router.post(', new_string: 'router.post(rateLimit(), ' }, 'File updated'],
+    ['Bash', { command: 'npm test -- checkout' }, '2 failing: expected 429, got 200 (tests/checkout.test.ts)'],
+    ['Edit', { file_path: path.join(cwd, 'src/middleware/rateLimit.ts'), old_string: 'window', new_string: 'slidingWindow' }, 'File updated'],
+  ];
+  steps.forEach(([name, input, out], i) => {
+    const tid = id();
+    L.push({ ...base, type: 'assistant', uuid: id(), timestamp: ts(2 + i * 3), message: { model: 'claude-sonnet-4-5', role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'tool_use', id: tid, name, input }], usage: { input_tokens: 9000 + i * 1500, output_tokens: 600 } } });
+    L.push({ ...base, type: 'user', uuid: id(), timestamp: ts(3 + i * 3), toolUseResult: name === 'Bash' ? { stdout: out } : { filePath: input.file_path }, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: tid, content: out, is_error: out.includes('failing') }] } });
+  });
+  L.push({ ...base, type: 'assistant', uuid: id(), isApiErrorMessage: true, timestamp: ts(16), message: { model: '<synthetic>', role: 'assistant', content: [{ type: 'text', text: "You've hit your session limit · resets 5pm" }] } });
+  L.push({ type: 'custom-title', customTitle: prompt, sessionId: sid });
+  write(path.join(home, '.claude', 'projects', enc(cwd), `${sid}.jsonl`), `${L.map((x) => JSON.stringify(x)).join('\n')}\n`);
+}
+
 // ---------- Codex: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl ----------
 schedule(1.3).forEach((n, day) => {
   for (let i = 0; i < n; i++) {

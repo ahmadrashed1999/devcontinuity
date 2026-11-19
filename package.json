@@ -28,7 +28,27 @@
     "session-history",
     "local-first"
   ],
-  "private": true,
+  "bin": {
+    "devcontinuity": "bin/devcontinuity.mjs"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "!scripts/demo/",
+    "!scripts/*.ps1",
+    "src/",
+    "prisma/",
+    "public/",
+    ".next/",
+    "!.next/cache/",
+    "!.next/dev/",
+    "!.next/trace",
+    "!.next/trace-build",
+    "!.next/types/",
+    "next.config.ts",
+    "tsconfig.json",
+    "CHANGELOG.md"
+  ],
   "engines": {
     "node": ">=22.5"
   },
@@ -48,7 +68,12 @@
     "startup:remove": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/startup.ps1 -Remove",
     "app": "node scripts/serve.mjs",
     "demo": "node scripts/demo/make-demo.mjs",
-    "demo:screenshots": "node scripts/demo/screenshots.mjs"
+    "demo:screenshots": "node scripts/demo/screenshots.mjs",
+    "prepublishOnly": "node scripts/setup.mjs && npm run typecheck && npm test && npm run build",
+    "pack:check": "node scripts/pack-check.mjs",
+    "prepack": "node scripts/package-externals.mjs",
+    "demo:gif": "node scripts/demo/gif.mjs",
+    "demo:rtl": "node scripts/demo/rtl-check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
@@ -62,8 +87,7 @@
     "prisma": "^6.19.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "shadcn": "^4.23.0",
-    "tw-animate-css": "^1.4.0",
+    "tsx": "^4.23.15",
     "yauzl": "^3.4.0",
     "zod": "^4.6.7"
   },
@@ -76,8 +100,11 @@
     "@types/yauzl": "^3.4.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0",
+    "shadcn": "^4.23.0",
     "tailwindcss": "4.3.3",
-    "tsx": "^4.23.15",
+    "tw-animate-css": "^1.4.0",
     "typescript": "^5",
     "vitest": "^5.1.0"
   }

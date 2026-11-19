@@ -4,6 +4,8 @@ import { AgentBadge, EndStatePill, Empty, LinkButton, PageHeader, Panel, Sparkli
 import { ensureDb, prisma } from '@/server/db';
 import { AGENT_COLORS, ago, fmtNum } from '@/lib/format';
 import { getT } from '@/lib/server-i18n';
+import { LimitHandoffs } from '@/components/dc/limit-handoff';
+import { pendingLimitHandoffs } from '@/server/handoff/limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +19,9 @@ function clock() {
   return { now, since: new Date(now - DAYS * DAY), weekAgo: new Date(now - 7 * DAY) };
 }
 
-export default async function Overview() {
+export default async function Overview({ searchParams }: PageProps<'/'>) {
+  const sp = await searchParams;
+  const highlight = typeof sp.handoff === 'string' ? sp.handoff : undefined;
   await ensureDb();
   const { t, lang } = await getT();
   const db = prisma();
@@ -35,6 +39,7 @@ export default async function Overview() {
     db.session.aggregate({ _sum: { eventCount: true } }),
     db.setting.findUnique({ where: { key: 'lastAutoSync' } }),
   ]);
+  const limits = total ? await pendingLimitHandoffs() : [];
 
   if (total === 0) {
     return (
@@ -75,6 +80,8 @@ export default async function Overview() {
         subtitle={<>{t.overviewSubtitle}{syncAt && <span className="text-slate-500"> · {t.lastImport} {ago(syncAt, lang)}</span>}</>}
         actions={<><LinkButton href="/agents"><Plug className="size-4" /> {t.connectMore}</LinkButton><LinkButton href="/handoff" variant="primary" className="xl:hidden"><ArrowRightLeft className="size-4" /> {t.continueCta}</LinkButton></>}
       />
+
+      {limits.length > 0 && <LimitHandoffs items={JSON.parse(JSON.stringify(limits))} highlight={highlight} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={t.sessionsThisWeek} value={fmtNum(weekSessions)} hint={`${fmtNum(total)} ${t.sessionsWord} · ${fmtNum(events._sum.eventCount)} ${t.eventsWord}`} href="/sessions" />

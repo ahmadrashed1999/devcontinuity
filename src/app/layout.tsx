@@ -5,6 +5,7 @@ import { LangProvider } from '@/components/dc/lang';
 import { Shell } from '@/components/dc/shell';
 import { dict, type Lang } from '@/lib/i18n';
 import { ensureDb } from '@/server/db';
+import { isDemo } from '@/server/demo';
 import { aiOrgEnabled } from '@/server/features';
 import './globals.css';
 
@@ -27,7 +28,7 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
     <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={`dark ${inter.variable} ${tajawal.variable} ${mono.variable} h-full`}>
       <body className="min-h-full">
         <LangProvider lang={lang}>
-          <Shell t={dict(lang)} lang={lang} aiOrg={aiOrg}>
+          <Shell t={dict(lang)} lang={lang} aiOrg={aiOrg} demo={isDemo()}>
             {children}
           </Shell>
         </LangProvider>

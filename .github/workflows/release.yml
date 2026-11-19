@@ -1,0 +1,57 @@
+name: Release
+
+# Runs when a version tag is pushed (git tag v2.1.0 && git push origin v2.1.0).
+# Builds and checks the npm package, then creates a GitHub release with the tarball attached.
+# Publishing to npm stays a manual step for the maintainer: "npm publish <tarball>".
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version" >&2
+            exit 1
+          fi
+      - run: npm run setup
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+        env:
+          GIT_AUTHOR_NAME: ci
+          GIT_AUTHOR_EMAIL: ci@example.com
+          GIT_COMMITTER_NAME: ci
+          GIT_COMMITTER_EMAIL: ci@example.com
+      - run: npm run build
+      - name: Pack and test-install the package
+        run: npm run pack:check
+      - name: Build the tarball to attach
+        run: npm pack
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md > release-notes.md
+          [ -s release-notes.md ] || echo "See CHANGELOG.md" > release-notes.md
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" devcontinuity-*.tgz --title "DevContinuity $GITHUB_REF_NAME" --notes-file release-notes.md --verify-tag

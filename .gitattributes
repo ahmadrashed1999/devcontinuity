@@ -1,0 +1,4 @@
+# Scripts run directly on macOS/Linux ("#!/usr/bin/env node"): a CRLF shebang would break them.
+bin/** text eol=lf
+*.mjs text eol=lf
+*.sh text eol=lf

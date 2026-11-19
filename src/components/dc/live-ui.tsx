@@ -23,6 +23,9 @@ const OFFERS: Record<string, { hooks: boolean; telemetry: boolean; why: string }
   antigravity: { hooks: false, telemetry: false, why: 'Already imported from its own index. MCP lets its agents log summaries and see other agents’ work.' },
   'claude-code': { hooks: false, telemetry: true, why: 'Already imported from its transcripts. MCP adds summaries; telemetry adds exact cost per session.' },
   codex: { hooks: false, telemetry: true, why: 'Already imported from its rollouts. MCP adds summaries; telemetry adds token usage.' },
+  'qwen-code': { hooks: true, telemetry: true, why: 'Experimental. Qwen Code follows Gemini CLI: hooks (in versions that have them) record prompts and tools; MCP adds summaries and shared memory.' },
+  'copilot-cli': { hooks: false, telemetry: false, why: 'Experimental. Adds the MCP server; Copilot CLI hooks live in each repository, and connecting shows the file to add.' },
+  kiro: { hooks: false, telemetry: false, why: 'Experimental. Adds the MCP server to Kiro; connecting shows the hooks to add to a Kiro CLI agent.' },
 };
 
 function Flag({ on, label }: { on: boolean; label: string }) {

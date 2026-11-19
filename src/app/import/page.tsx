@@ -15,11 +15,11 @@ export default async function ImportPage() {
   ]);
   return (
     <div>
-      <PageHeader title={t.import} subtitle="Recovery inventory of every agent data directory found on this machine. Review it, then import safe copies." />
+      <PageHeader title={t.import} subtitle={t.importSubtitle} />
       <ImportCenter projects={projects} />
       {jobs.length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold text-slate-300">Import history</h2>
+          <h2 className="mb-2 text-sm font-semibold text-slate-300">{t.importHistory}</h2>
           <div className="overflow-hidden rounded-xl border border-border">
             <table className="w-full text-xs">
               <tbody>

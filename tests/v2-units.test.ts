@@ -7,7 +7,7 @@ import { buildLaunchScript, psq } from '../src/server/agents/launcher';
 import { validateCommand } from '../src/server/verify/runner';
 import { classify } from '../src/server/git/worktrees';
 import { decide } from '../src/server/verify/triage';
-import { nextRun } from '../src/server/org/scheduler';
+import { nextRun } from '../src/server/scheduler';
 import { signS3Put } from '../src/server/backup/cloud';
 import { extractJson, toJsonSchema } from '../src/server/ai/gateway';
 import { parseRepo } from '../src/server/github';

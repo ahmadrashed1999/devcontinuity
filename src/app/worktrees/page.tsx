@@ -15,10 +15,10 @@ export default async function WorktreesPage({ searchParams }: PageProps<'/worktr
   const projectId = typeof sp.projectId === 'string' && sp.projectId ? sp.projectId : sorted[0]?.id;
   return (
     <div>
-      <PageHeader title={t.worktrees} subtitle="Every worktree of a project: uncommitted work at risk, unmerged commits, merged and stale ones. This is where hidden unfinished work usually lives." />
-      {!projectId ? <Empty>No Git projects found on this machine.</Empty> : (
+      <PageHeader title={t.worktrees} subtitle={t.worktreesSubtitle} />
+      {!projectId ? <Empty>{t.worktreesNone}</Empty> : (
         <>
-          <FilterBar><Select name="projectId" value={projectId} label="Project" options={sorted.map((p) => [p.id, `${p.name}${p._count.sessions ? ` (${p._count.sessions} worktree sessions)` : ''}`])} /></FilterBar>
+          <FilterBar><Select name="projectId" value={projectId} label={t.fProject} options={sorted.map((p) => [p.id, `${p.name}${p._count.sessions ? ` (${t.worktreeSessions.replace('{n}', String(p._count.sessions))})` : ''}`])} /></FilterBar>
           <WorktreeList projectId={projectId} />
         </>
       )}

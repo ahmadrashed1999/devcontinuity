@@ -49,11 +49,11 @@ If the agent has no readable history but supports hooks, add its payload dialect
 
 ## Demo workspace and screenshots
 
-`npm run demo` builds a fictional workspace (four projects, two weeks of sessions from nine agents, each in that agent's real on-disk format) and imports it into `./demo`, never touching your own data. `npm run demo -- --serve` serves it on port 3299, and `npm run demo:screenshots` (with the demo running) regenerates every image in `docs/images/`, including the banner, using any installed Chrome or Edge. Use `DEMO_DIR=/tmp/dc-demo` for short paths in screenshots.
+`npm run demo` builds a fictional workspace (including a Claude Code session that stops on its usage limit) (four projects, two weeks of sessions from nine agents, each in that agent's real on-disk format) and imports it into `./demo`, never touching your own data. `npm run demo -- --serve` serves it on port 3299, and `npm run demo:screenshots` (with the demo running) regenerates every image in `docs/images/`, including the banner, using any installed Chrome or Edge. `npm run demo:gif` records the README animation (it needs the demo served normally, not in demo mode), and `npm run demo:rtl` checks every page in Arabic at phone and desktop width. Use `DEMO_DIR=/tmp/dc-demo` for short paths in screenshots.
 
 ## Translations
 
-UI strings live in `src/lib/i18n.ts` (English and Arabic). Add a key to both dictionaries; server components use `getT()`, client components use `useT()` from `components/dc/lang.tsx`.
+UI strings live in `src/lib/i18n.ts` and, for page texts, `src/lib/i18n-pages.ts` (English and Arabic). Add a key to both dictionaries; server components use `getT()`, client components use `useT()` from `components/dc/lang.tsx`.
 
 ## Commit style
 

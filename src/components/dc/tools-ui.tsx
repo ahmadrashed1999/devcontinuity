@@ -269,6 +269,7 @@ export function RulesEditor({ projectId }: { projectId: string }) {
   const [data, setData] = useState<{ rules: string; preview: { id: string; label: string; file: string; exists: boolean; managed: boolean; action: string }[] } | null>(null);
   const [rules, setRules] = useState('');
   const [targets, setTargets] = useState<string[]>(['claude', 'agents', 'cursor']);
+  const [sharedMemory, setSharedMemory] = useState(true);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const load = useCallback(() => api<typeof data>(`projects/${projectId}/rules`).then((d) => { setData(d); setRules(d?.rules ?? ''); }), [projectId]);
   useEffect(() => {
@@ -291,7 +292,14 @@ export function RulesEditor({ projectId }: { projectId: string }) {
             <span className="text-slate-200">{p.label}</span> <span className="font-mono text-xs text-slate-500">{p.file}</span> <span className="text-xs text-cyan">{p.action}</span>
           </label>
         ))}
-        <button onClick={async () => { if (!window.confirm('Write the rules block into the selected files in the project folder? Originals are backed up first.')) return; try { await api(`projects/${projectId}/rules`, { method: 'PUT', json: { rules } }); const r = await api<{ file: string; action: string }[]>(`projects/${projectId}/rules/sync`, { method: 'POST', json: { targets } }); setMsg({ ok: true, text: r.map((x) => `${x.action}: ${x.file}`).join(' · ') }); void load(); } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } }} className={`${btnP} mt-2`}>Sync now</button>
+        <label className="mt-2 flex items-start gap-2 rounded-lg border border-cyan/30 bg-cyan/5 p-2 text-sm">
+          <input type="checkbox" className="mt-1" checked={sharedMemory} onChange={(e) => setSharedMemory(e.target.checked)} />
+          <span>
+            <span className="text-slate-100">Shared memory: tell agents to call <code>project_context</code> at the start and <code>log_summary</code> at the end</span>
+            <span className="block text-xs text-muted-foreground">Adds a short instruction to the block, so every connected agent sees what the others did here and leaves notes for the next one (needs the DevContinuity MCP server: Connected agents → Connect).</span>
+          </span>
+        </label>
+        <button onClick={async () => { if (!window.confirm('Write the rules block into the selected files in the project folder? Originals are backed up first.')) return; try { await api(`projects/${projectId}/rules`, { method: 'PUT', json: { rules } }); const r = await api<{ file: string; action: string }[]>(`projects/${projectId}/rules/sync`, { method: 'POST', json: { targets, sharedMemory } }); setMsg({ ok: true, text: r.map((x) => `${x.action}: ${x.file}`).join(' · ') }); void load(); } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } }} className={`${btnP} mt-2`}>Sync now</button>
       </div>
       <Msg m={msg} />
     </div>

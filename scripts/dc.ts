@@ -5,9 +5,10 @@ import path from 'node:path';
 import { disconnectDb, ensureDb, prisma } from '../src/server/db';
 import type { AgentId } from '../src/server/adapters/types';
 
+const CLI = process.env.DEVCONTINUITY_CLI_NAME || 'npm run dc --';
 const HELP = `DevContinuity CLI
 
-Usage: npm run dc -- <command> [options]
+Usage: ${CLI} <command> [options]
 
 Recovery
   scan [--agent <id>] [--json]            Read-only inventory of recoverable agent data
@@ -17,6 +18,8 @@ Browse
   projects                                List projects
   sessions [--project <name|id>] [--limit N]
   search <query>                          Full-text search across all sessions
+  wrapped [--month 2026-11 | --year 2026] [--json]
+                                          AI Coding Wrapped: a month or year in numbers
 Continue with any agent
   resume --project <name|id> | --session <id> [--agent claude-code|opencode|codex|cursor|generic]
          [--out <file>]                   Print (or save) a ready-to-paste continuation prompt
@@ -27,12 +30,14 @@ Connect agents (live logging)
   agents                                  Which agents are connected and what they have logged
   connect <agent> [--telemetry] [--yes]   Show, then (with --yes) apply hooks + MCP setup for an agent
   disconnect <agent> [--yes]              Remove DevContinuity's hooks/MCP/telemetry from an agent
-                                          agents: gemini-cli, cursor, windsurf, antigravity, claude-code, codex
+                                          agents: gemini-cli, cursor, windsurf, antigravity, claude-code, codex,
+                                          qwen-code, copilot-cli, kiro (experimental)
 Safety
   backup [--with-archives] [--note <text>]
   token                                   Show where the local API token is stored
 
-Imported automatically: claude-code, codex, opencode, antigravity, cline (+ Roo/Kilo), copilot, continue, cursor.
+Imported automatically: claude-code, codex, opencode, antigravity, cline (+ Roo/Kilo), copilot, continue, cursor, aider, zed.
+Upload in the Import Center: ChatGPT and Claude.ai data exports.
 Any other agent: connect it, or POST events to /api/ingest/event.`;
 
 function parseArgs(argv: string[]) {
@@ -60,7 +65,7 @@ export async function findProject(ref: string) {
   const byId = await db.project.findFirst({ where: { OR: [{ id: ref }, { slug: ref }] } });
   if (byId) return byId;
   const matches = await db.project.findMany({ where: { OR: [{ name: { contains: ref } }, { rootPath: { contains: ref } }] }, orderBy: { lastActivityAt: 'desc' } });
-  if (matches.length === 0) throw new Error(`No project matches "${ref}". Run "npm run dc -- projects" to list them.`);
+  if (matches.length === 0) throw new Error(`No project matches "${ref}". Run "${CLI} projects" to list them.`);
   if (matches.length > 1) {
     const exact = matches.find((m) => m.name.toLowerCase() === ref.toLowerCase());
     if (exact) return exact;
@@ -102,7 +107,7 @@ async function main() {
   if (command === 'connect' || command === 'disconnect') {
     const { CONNECT_AGENTS, applyConnect, planConnect } = await import('../src/server/live/connect');
     const agent = positional[0] as (typeof CONNECT_AGENTS)[number];
-    if (!CONNECT_AGENTS.includes(agent)) throw new Error(`Usage: npm run dc -- ${command} <${CONNECT_AGENTS.join('|')}>`);
+    if (!CONNECT_AGENTS.includes(agent)) throw new Error(`Usage: ${CLI} ${command} <${CONNECT_AGENTS.join('|')}>`);
     const plan = planConnect(agent, { telemetry: !!flags.telemetry, remove: command === 'disconnect' });
     console.log(`${command === 'connect' ? 'Connect' : 'Disconnect'} ${plan.label}\n`);
     if (!plan.changes.length && !plan.commands.length) console.log('Nothing to change: already in the requested state.');
@@ -133,6 +138,7 @@ async function main() {
   if (command === 'import') {
     const { runImport } = await import('../src/server/import/importer');
     const { isLocked, withLock } = await import('../src/server/lock');
+    const startedAt = new Date();
     let last = 0;
     // Same lease lock as the background auto-sync, so a manual import never races it.
     const res = await withLock('import', 60 * 60_000, () => runImport(
@@ -150,7 +156,15 @@ async function main() {
       },
     ));
     if (isLocked(res)) throw new Error('Another import is running (auto-sync or the UI). Try again in a minute.');
+    // Flag sessions that just stopped on a limit or error, exactly like the background sync does.
+    const { notifyEndings } = await import('../src/server/sync/watcher');
+    await notifyEndings(startedAt);
     console.log(JSON.stringify({ ...res, errors: res.errors.slice(0, 20) }, null, 2));
+  } else if (command === 'wrapped') {
+    const { parsePeriod, renderWrappedText, wrappedStats } = await import('../src/server/wrapped');
+    const key = typeof flags.month === 'string' ? flags.month : typeof flags.year === 'string' ? flags.year : undefined;
+    const stats = await wrappedStats(parsePeriod(key));
+    console.log(flags.json ? JSON.stringify(stats, null, 2) : renderWrappedText(stats));
   } else if (command === 'projects') {
     const projects = await db.project.findMany({ orderBy: { lastActivityAt: 'desc' }, include: { _count: { select: { sessions: true, tasks: true } } } });
     for (const p of projects) console.log(`${fmtDate(p.lastActivityAt)}  ${p.slug.padEnd(34)} sessions=${String(p._count.sessions).padEnd(4)} tasks=${String(p._count.tasks).padEnd(5)} ${p.pathExists ? '' : '[folder missing] '}${p.rootPath}`);

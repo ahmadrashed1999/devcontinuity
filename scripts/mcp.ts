@@ -14,6 +14,7 @@ import { ensureDb, prisma } from '../src/server/db';
 import { buildResumeContext, renderContinuationPrompt } from '../src/server/handoff/context';
 import { searchEvents } from '../src/server/search';
 import { agentLabel } from '../src/server/adapters';
+import { projectContext, projectContextForDirectory } from '../src/server/memory';
 import { appendLive, normalizeAgentId } from '../src/server/live/store';
 
 /** Set from the MCP initialize handshake (clientInfo.name), so log calls know which agent is talking. */
@@ -29,7 +30,8 @@ const TOOLS = [
   { name: 'find_project_for_directory', description: 'Find the DevContinuity project for a working directory (use your current directory).', inputSchema: { type: 'object', properties: { directory: { type: 'string' } }, required: ['directory'] } },
   { name: 'list_sessions', description: 'List recent sessions of a project (any agent).', inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Project id, slug or name' }, limit: { type: 'number' } }, required: ['project'] } },
   { name: 'get_resume_briefing', description: 'Get a complete continuation briefing for a project or a specific session: last request, last response, unfinished tasks, changed files, errors, Git state and next steps.', inputSchema: { type: 'object', properties: { project: { type: 'string' }, session_id: { type: 'string' }, agent: { type: 'string', description: 'Target agent for the wording: claude-code, codex, opencode, cursor, generic' } } } },
-  { name: 'recent_activity', description: 'What every AI agent (Claude Code, Codex, Antigravity, Cursor, Copilot, Cline, Gemini CLI...) did recently in a folder. Call this before starting work to avoid redoing or undoing work another agent did.', inputSchema: { type: 'object', properties: { directory: { type: 'string', description: 'Your current working directory' }, limit: { type: 'number' } }, required: ['directory'] } },
+  { name: 'recent_activity', description: 'Short version of project_context: what every AI agent (Claude Code, Codex, Antigravity, Cursor, Copilot, Cline, Gemini CLI...) did recently in a folder, open tasks and last errors. Call this before starting work to avoid redoing or undoing work another agent did.', inputSchema: { type: 'object', properties: { directory: { type: 'string', description: 'Your current working directory' }, limit: { type: 'number', description: 'Sessions per agent (default 2)' } }, required: ['directory'] } },
+  { name: 'project_context', description: 'Shared memory across agents. Call at the START of a task: a compact summary of what each AI agent did recently in this project (per agent: requests, how each session ended, last answers), summaries agents logged, open tasks, last errors and recently changed files. Call log_summary when you finish so the next agent knows.', inputSchema: { type: 'object', properties: { directory: { type: 'string', description: 'Your current working directory' }, project: { type: 'string', description: 'Project id, slug or name (instead of directory)' }, days: { type: 'number', description: 'Look back this many days (default 14)' } } } },
   { name: 'log_summary', description: 'Record what you just did in the DevContinuity cross-agent log. Call it when you finish a task (or stop with work left over) so the user and other agents can see and continue it.', inputSchema: { type: 'object', properties: { summary: { type: 'string', description: 'What was done and why, in a few sentences' }, title: { type: 'string', description: 'Short task title' }, status: { type: 'string', enum: ['done', 'partial', 'blocked', 'failed'] }, files_changed: { type: 'array', items: { type: 'string' } }, next_steps: { type: 'array', items: { type: 'string' } }, directory: { type: 'string', description: 'Your working directory' }, session_id: { type: 'string', description: 'Your session id, if you know it' } }, required: ['summary'] } },
   { name: 'log_event', description: 'Record one step (prompt, response, tool call, error) in the DevContinuity cross-agent log. Only needed for agents without hook support.', inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['prompt', 'assistant', 'tool_call', 'tool_result', 'error', 'meta'] }, text: { type: 'string' }, tool: { type: 'string' }, command: { type: 'string' }, file: { type: 'string' }, directory: { type: 'string' }, session_id: { type: 'string' } }, required: ['kind'] } },
   { name: 'search_history', description: 'Full-text search across all imported session transcripts.', inputSchema: { type: 'object', properties: { query: { type: 'string' }, project: { type: 'string' }, limit: { type: 'number' } }, required: ['query'] } },
@@ -73,13 +75,12 @@ async function call(name: string, a: Record<string, unknown>): Promise<string> {
       const r = await searchEvents(String(a.query ?? ''), { projectId, limit: Math.min(Number(a.limit) || 15, 50) });
       return r.hits.map((h) => `[${h.timestamp?.slice(0, 16) ?? '-'}] ${h.projectName ?? '-'} / ${h.sessionTitle ?? h.sessionId} (${h.kind}, session ${h.sessionId} #${h.seq})\n  ${h.snippet.replace(/\s+/g, ' ')}`).join('\n') || 'No matches.';
     }
-    case 'recent_activity': {
-      const dir = String(a.directory ?? '').replace(/\\/g, '/').toLowerCase().replace(/\/+$/, '');
-      const all = await db.project.findMany({ where: { pathVerified: true } });
-      const p = all.filter((x) => dir === x.pathKey || dir.startsWith(`${x.pathKey}/`)).sort((x, y) => y.pathKey.length - x.pathKey.length)[0];
-      if (!p) return 'No DevContinuity project matches this directory yet.';
-      const rows = await db.session.findMany({ where: { projectId: p.id, isSubagent: false }, orderBy: { endedAt: 'desc' }, take: Math.min(Number(a.limit) || 12, 40) });
-      return [`Project ${p.name} (${p.rootPath})`, ...rows.map((s) => `- ${s.endedAt?.toISOString().slice(0, 16) ?? '-'} | ${agentLabel(s.agent)} | ${s.endState} | ${s.title ?? ''}${s.lastUserPrompt ? `\n    last request: ${s.lastUserPrompt.replace(/\s+/g, ' ').slice(0, 200)}` : ''}`)].join('\n');
+    case 'recent_activity':
+      // Compact cross-agent view: the last session or two per agent, open tasks, last errors.
+      return projectContextForDirectory(String(a.directory ?? ''), { perAgent: Math.min(Number(a.limit) || 2, 10), days: 7 });
+    case 'project_context': {
+      if (typeof a.project === 'string' && a.project) return projectContext((await project(a.project)).id, { perAgent: 3, days: Math.min(Number(a.days) || 14, 90) });
+      return projectContextForDirectory(String(a.directory ?? ''), { perAgent: 3, days: Math.min(Number(a.days) || 14, 90) });
     }
     case 'log_summary':
     case 'log_event': {

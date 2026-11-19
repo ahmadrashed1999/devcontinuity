@@ -21,26 +21,26 @@ export default async function HandoffPage({ searchParams }: PageProps<'/handoff'
   const history = await db.handoff.findMany({ orderBy: { createdAt: 'desc' }, take: 20, include: { project: { select: { name: true } } } });
   return (
     <div className="space-y-6">
-      <PageHeader title={t.continueCta} subtitle="Continue any project or session with Claude Code, OpenCode, Codex, Cursor or any other model. DevContinuity reconstructs the working context accurately. It cannot restore another agent's hidden internal state, and it does not pretend to." />
+      <PageHeader title={t.continueCta} subtitle={t.handoffSubtitle} />
       {projects.length === 0 ? <Empty>{t.importFirst}</Empty> : (
         <>
           <FilterBar>
-            <Select name="projectId" value={projectId} label="Project" options={projects.map((p) => [p.id, p.name])} />
-            <Select name="sessionId" value={sessionId} label="Focus (optional: defaults to the latest session)" options={sessions.map((s) => [s.id, `${fmtDate(s.endedAt, false)} · ${agentName(s.agent)} · ${(s.title ?? s.id).slice(0, 60)}`])} />
+            <Select name="projectId" value={projectId} label={t.fProject} options={projects.map((p) => [p.id, p.name])} />
+            <Select name="sessionId" value={sessionId} label={t.handoffFocus} options={sessions.map((s) => [s.id, `${fmtDate(s.endedAt, false)} · ${agentName(s.agent)} · ${(s.title ?? s.id).slice(0, 60)}`])} />
           </FilterBar>
-          <Panel title={<span className="inline-flex items-center gap-2"><ArrowRightLeft className="size-4 text-cyan" /> Handoff</span>}>
+          <Panel title={<span className="inline-flex items-center gap-2"><ArrowRightLeft className="size-4 text-cyan" /> {t.handoffTitle}</span>}>
             <ContinuePanel projectId={projectId} sessionId={sessionId} />
           </Panel>
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              ['1 · Copy & paste', 'Copy the prompt and paste it as the first message in the agent. Works with any model, even a plain chat window.'],
-              ['2 · Package', 'Download the ZIP: README, 13 context documents, SESSION_REFERENCES.json, manifest.json with checksums, and one prompt per agent.'],
-              ['3 · Drop into the repo', 'Writes into <project>/.devcontinuity/ only (never overwrites anything). Then tell any agent: “Read .devcontinuity/RESUME.md and continue.”'],
+              [t.handoffStep1Title, t.handoffStep1],
+              [t.handoffStep2Title, t.handoffStep2],
+              [t.handoffStep3Title, t.handoffStep3],
             ].map(([h, b]) => <div key={h} className="rounded-xl border border-border bg-card p-4"><div className="font-semibold text-white">{h}</div><p className="mt-1 text-sm text-muted-foreground">{b}</p></div>)}
           </div>
         </>
       )}
-      <Panel title="Previous handoffs" bodyClass="p-0">
+      <Panel title={t.handoffPrevious} bodyClass="p-0">
         <table className="w-full text-sm">
           <tbody>
             {history.map((h) => (
@@ -52,7 +52,7 @@ export default async function HandoffPage({ searchParams }: PageProps<'/handoff'
                 <td className="p-2 text-end">{h.zipPath && <a href={`/api/handoffs/${h.id}/download`} className="text-xs text-primary">ZIP</a>}</td>
               </tr>
             ))}
-            {history.length === 0 && <tr><td className="p-4 text-sm text-muted-foreground">No handoffs yet.</td></tr>}
+            {history.length === 0 && <tr><td className="p-4 text-sm text-muted-foreground">{t.handoffNone}</td></tr>}
           </tbody>
         </table>
       </Panel>

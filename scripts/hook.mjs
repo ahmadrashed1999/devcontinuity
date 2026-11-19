@@ -2,7 +2,8 @@
 /**
  * DevContinuity hook recorder. Agents run it as a hook command and pipe the event JSON to stdin:
  *
- *   node "<repo>/scripts/hook.mjs" <agent>
+ *   node "<repo>/scripts/hook.mjs" <agent> [event]
+ *   node "<data>/bin/devcontinuity-hook.mjs" <agent>     (npm installation)
  *
  * It appends the payload unchanged to data/live/<agent>/<session>.jsonl and exits 0 without
  * printing anything, so it can never block or alter the agent. It needs no running server and no
@@ -16,7 +17,10 @@ const MAX_STDIN = 8 * 1024 * 1024;
 const MAX_STRING = 200_000;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = process.env.DEVCONTINUITY_DATA_DIR?.trim() || path.join(here, '..', 'data');
+// npm installations copy this file to <data>/bin/devcontinuity-hook.mjs and fill in the line below,
+// so agents keep logging even after npx clears its cache.
+const INSTALLED_DATA_DIR = null;
+const dataDir = process.env.DEVCONTINUITY_DATA_DIR?.trim() || INSTALLED_DATA_DIR || path.join(here, '..', 'data');
 
 const safe = (v, fallback) => {
   const s = typeof v === 'string' || typeof v === 'number' ? String(v) : '';
@@ -60,6 +64,8 @@ async function main() {
   }
   const session = safe(payload.session_id ?? payload.sessionId ?? payload.conversation_id ?? payload.trajectory_id ?? payload.thread_id, `${agent}-${new Date().toISOString().slice(0, 10)}`);
   const record = { v: 1, at: new Date().toISOString(), source: 'hook', agent, session, cwd: process.cwd(), payload: clip(payload) };
+  // Agents whose payload does not name the event (Copilot CLI) get it as a second argument.
+  if (process.argv[3]) record.event = safe(process.argv[3], 'event');
   // Cursor waits for an answer on "before" hooks: always allow, never change anything.
   const ev = payload.hook_event_name;
   if (ev === 'beforeSubmitPrompt') process.stdout.write('{"continue":true}');

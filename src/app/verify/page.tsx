@@ -18,11 +18,11 @@ export default async function VerifyPage({ searchParams }: PageProps<'/verify'>)
   const tasks = projectId ? await db.task.findMany({ where: { projectId, status: 'requires_verification' }, orderBy: [{ triage: 'asc' }, { occurredAt: 'desc' }], take: 400, select: { id: true, title: true, triage: true, triageReason: true } }) : [];
   return (
     <div className="space-y-6">
-      <PageHeader title={t.verify} subtitle="Agents said these are done. Check them against the real files, Git and your tests — then approve in batches. Only you can mark work completed." />
+      <PageHeader title={t.verify} subtitle={t.verifySubtitle} />
       <TriagePanel summary={summary} />
-      <Panel title="Verify one project with its tests">
-        <FilterBar><Select name="projectId" value={projectId} label="Project" options={projects.map((p) => [p.id, p.name])} /></FilterBar>
-        {projectId ? <VerifyPanel projectId={projectId} tasks={tasks} /> : <div className="text-sm text-muted-foreground">Choose a project.</div>}
+      <Panel title={t.verifyOne}>
+        <FilterBar><Select name="projectId" value={projectId} label={t.fProject} options={projects.map((p) => [p.id, p.name])} /></FilterBar>
+        {projectId ? <VerifyPanel projectId={projectId} tasks={tasks} /> : <div className="text-sm text-muted-foreground">{t.chooseProject}</div>}
       </Panel>
     </div>
   );

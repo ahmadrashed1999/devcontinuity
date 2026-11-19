@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, FolderSearch, Loader2, ShieldCheck, Upload
 import { api, followJob, type JobState } from '@/lib/api';
 import { fmtBytes, fmtDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useT } from './lang';
 
 interface Inv {
   agent: string;
@@ -46,6 +47,7 @@ export function JobProgress({ job }: { job: JobState }) {
 }
 
 export function ImportCenter({ projects }: { projects: { id: string; name: string }[] }) {
+  const { t } = useT();
   const router = useRouter();
   const [inv, setInv] = useState<Inv[] | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -122,16 +124,16 @@ export function ImportCenter({ projects }: { projects: { id: string; name: strin
       <div className="flex items-start gap-3 rounded-xl border border-success/25 bg-success/5 p-4 text-sm text-green-100/90">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-success" />
         <div>
-          <b>Original data is never modified.</b> Scanning is read-only. Importing first makes byte-for-byte safe copies in DevContinuity&apos;s archive and parses only the copies. Credential files and environment captures are never copied. Re-running an import only processes sessions that changed.
+          <b>{t.icSafeTitle}</b> {t.icSafeBody}
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={scan} disabled={scanning} className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm hover:bg-secondary disabled:opacity-50">
-          {scanning ? <Loader2 className="size-4 animate-spin" /> : <FolderSearch className="size-4" />} Rescan (read-only)
+          {scanning ? <Loader2 className="size-4 animate-spin" /> : <FolderSearch className="size-4" />} {t.icRescan}
         </button>
         <button onClick={() => start()} disabled={running || !inv} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/85 disabled:opacity-50">
-          {running ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Import selected sources
+          {running ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} {t.icImportSelected}
         </button>
         <label className="flex items-center gap-1.5 text-sm text-slate-300">
           <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} /> Re-import unchanged sessions
@@ -186,7 +188,7 @@ export function ImportCenter({ projects }: { projects: { id: string; name: strin
                 </table>
                 {i.unrecoverable.length > 0 && (
                   <div className="mt-3 rounded-lg border border-warning/25 bg-warning/5 p-2.5">
-                    <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-warning"><AlertTriangle className="size-3.5" /> Cannot be recovered</div>
+                    <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-warning"><AlertTriangle className="size-3.5" /> {t.icCannotRecover}</div>
                     <ul className="list-disc space-y-0.5 ps-4 text-xs text-amber-100/80">
                       {i.unrecoverable.map((u) => <li key={u}>{u}</li>)}
                     </ul>
@@ -195,7 +197,7 @@ export function ImportCenter({ projects }: { projects: { id: string; name: strin
                 {i.errors.length > 0 && <div className="mt-2 text-xs text-danger">{i.errors.slice(0, 5).join(' · ')}</div>}
                 {i.projectDirs.length > 0 && (
                   <details className="mt-3">
-                    <summary className="cursor-pointer text-xs text-slate-400">Discovered project folders ({i.projectDirs.length})</summary>
+                    <summary className="cursor-pointer text-xs text-slate-400">{t.icDiscovered.replace('{n}', String(i.projectDirs.length))}</summary>
                     <div className="mt-2 max-h-64 overflow-auto">
                       <table className="w-full text-[11px]">
                         <tbody>
@@ -214,35 +216,37 @@ export function ImportCenter({ projects }: { projects: { id: string; name: strin
             )}
           </div>
         ))}
-        {!inv && scanning && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Scanning agent data directories…</div>}
+        {!inv && scanning && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> {t.icScanning}</div>}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-1 font-semibold text-white">Import from another folder</div>
-          <p className="mb-3 text-xs text-muted-foreground">A copied .claude folder from another machine or a backup drive, a different CLAUDE_CONFIG_DIR, a Codex home, etc. The folder is only read.</p>
+          <div className="mb-1 font-semibold text-white">{t.icFolderTitle}</div>
+          <p className="mb-3 text-xs text-muted-foreground">{t.icFolderHelp}</p>
           <div className="flex flex-wrap gap-2">
             <select value={rootAgent} onChange={(e) => setRootAgent(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-sm">
-              {['claude-code', 'codex', 'opencode', 'antigravity', 'cline', 'copilot', 'continue', 'cursor', 'generic'].map((a) => <option key={a}>{a}</option>)}
+              {['claude-code', 'codex', 'opencode', 'antigravity', 'cline', 'copilot', 'continue', 'cursor', 'aider', 'zed', 'generic'].map((a) => <option key={a}>{a}</option>)}
             </select>
             <input value={root} onChange={(e) => setRoot(e.target.value)} placeholder="D:\\old-laptop\\.claude" className="h-8 min-w-64 flex-1 rounded-md border border-border bg-background px-2 font-mono text-sm" />
-            <button disabled={!root.trim() || running} onClick={() => start({ root, rootAgent, onlyRoot: true, agents: [rootAgent] })} className="h-8 rounded-lg bg-secondary px-3 text-sm disabled:opacity-50">Import folder</button>
+            <button disabled={!root.trim() || running} onClick={() => start({ root, rootAgent, onlyRoot: true, agents: [rootAgent] })} className="h-8 rounded-lg bg-secondary px-3 text-sm disabled:opacity-50">{t.icImportFolder}</button>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-1 font-semibold text-white">Upload a file</div>
-          <p className="mb-3 text-xs text-muted-foreground">Any JSON / JSONL chat export, a Claude Code transcript (.jsonl), or a .zip of them (extracted safely, with path traversal blocked).</p>
+          <div className="mb-1 font-semibold text-white">{t.icUploadTitle}</div>
+          <p className="mb-3 text-xs text-muted-foreground">{t.icUploadHelp}</p>
           <div className="flex flex-wrap gap-2">
             <select value={upAgent} onChange={(e) => setUpAgent(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-sm">
-              <option value="generic">Generic JSON/JSONL</option>
-              <option value="claude-code">Claude Code transcript</option>
+              <option value="generic">{t.icGeneric}</option>
+              <option value="claude-code">{t.icClaudeTranscript}</option>
+              <option value="chatgpt">{t.icChatgpt}</option>
+              <option value="claude-ai">{t.icClaudeAi}</option>
             </select>
             <select value={upProject} onChange={(e) => setUpProject(e.target.value)} className="h-8 max-w-48 rounded-md border border-border bg-background px-2 text-sm">
-              <option value="">Detect project</option>
+              <option value="">{t.icDetectProject}</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <input ref={fileRef} type="file" accept=".json,.jsonl,.ndjson,.zip" className="text-sm file:me-2 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-slate-200" />
-            <button disabled={running} onClick={upload} className="h-8 rounded-lg bg-secondary px-3 text-sm disabled:opacity-50">Upload & import</button>
+            <button disabled={running} onClick={upload} className="h-8 rounded-lg bg-secondary px-3 text-sm disabled:opacity-50">{t.icUpload}</button>
           </div>
         </div>
       </div>

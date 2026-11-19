@@ -11,7 +11,7 @@ import { APP_VERSION, dataPath, ensureDir, timestampSlug } from '@/server/config
 import { ensureDb, getSetting, parseJson, prisma, setSetting } from '@/server/db';
 import { getDiff, getGitState } from '@/server/git/git';
 import { buildResumeContext, renderContinuationPrompt } from '@/server/handoff/context';
-import { createHandoff, dropInHandoff } from '@/server/handoff/package';
+import { createHandoff, dropInHandoff, previewHandoff } from '@/server/handoff/package';
 import { runImport, scanAll } from '@/server/import/importer';
 import { generateProjectDocs } from '@/server/intelligence/docs';
 import { PRIORITIES, TASK_STATUSES, VERIFICATION_LEVELS } from '@/server/intelligence/tasks';
@@ -23,6 +23,9 @@ import { redactSecrets } from '@/server/security/redact';
 import { extractZipSafely } from '@/server/zip';
 import { v2Routes } from '@/server/api/v2';
 import { liveRoutes } from '@/server/api/live';
+import { DEMO_MESSAGE, demoAllows, isDemo } from '@/server/demo';
+import { aiOrgEnabled } from '@/server/features';
+import { orgRoutes } from '@/modules/org/api';
 
 type Ctx = { params: Promise<{ path: string[] }> };
 type Handler = (req: NextRequest, m: string[]) => Promise<Response>;
@@ -250,9 +253,15 @@ const routes: [string, string, Handler][] = [
     return json({ prompt: renderContinuationPrompt(ctx, agent), context: { project: ctx.project, focus: ctx.focus, taskCounts: ctx.taskCounts, nextSteps: ctx.nextSteps, git: ctx.git ? { branch: ctx.git.branch, changes: ctx.git.counts.total, head: ctx.git.head } : null } });
   }],
   ['GET', 'handoffs', async (req) => json(await prisma().handoff.findMany({ where: { projectId: q(req, 'projectId') }, orderBy: { createdAt: 'desc' }, take: 50, include: { project: { select: { name: true } } } }))],
+  ['POST', 'handoffs/preview', async (req) => {
+    const b = await body(req);
+    return json(await previewHandoff({ projectId: typeof b.projectId === 'string' ? b.projectId : undefined, sessionId: typeof b.sessionId === 'string' ? b.sessionId : undefined, targetAgent: typeof b.targetAgent === 'string' ? b.targetAgent : 'generic' }));
+  }],
   ['POST', 'handoffs', async (req) => {
     const b = await body(req);
-    const h = await createHandoff({ projectId: typeof b.projectId === 'string' ? b.projectId : undefined, sessionId: typeof b.sessionId === 'string' ? b.sessionId : undefined, targetAgent: typeof b.targetAgent === 'string' ? b.targetAgent : 'generic' });
+    // Choices from the "review before sharing" step: replaced file texts, or null to leave a file out.
+    const overrides = b.overrides && typeof b.overrides === 'object' ? Object.fromEntries(Object.entries(b.overrides as Record<string, unknown>).filter(([, v]) => v === null || typeof v === 'string')) as Record<string, string | null> : undefined;
+    const h = await createHandoff({ projectId: typeof b.projectId === 'string' ? b.projectId : undefined, sessionId: typeof b.sessionId === 'string' ? b.sessionId : undefined, targetAgent: typeof b.targetAgent === 'string' ? b.targetAgent : 'generic', overrides });
     return json({ id: h.id, dirPath: h.dirPath, zipPath: h.zipPath, files: h.fileNames, prompt: h.prompt }, 201);
   }],
   ['GET', 'handoffs/:id/download', async (_r, [id]) => {
@@ -382,6 +391,9 @@ const routes: [string, string, Handler][] = [
 ];
 
 routes.push(...v2Routes, ...liveRoutes);
+// Optional AI organization module: its routes only answer while the module is switched on.
+const ORG_HANDLERS = new Set<Handler>(orgRoutes.map((r) => r[2]));
+routes.push(...orgRoutes);
 
 /** From the phone (via the Cloudflare tunnel) the API is read-only, except answering decisions when the owner allows it. */
 async function remoteAllowed(method: string, segs: string[]): Promise<boolean> {
@@ -415,7 +427,9 @@ async function dispatch(method: string, req: NextRequest, ctx: Ctx): Promise<Res
   const found = match(method, segs);
   if (!found) return json({ error: `No route for ${method} /api/${segs.join('/')}` }, 404);
   try {
+    if (isDemo() && !demoAllows(method, segs)) return json({ error: DEMO_MESSAGE, demo: true }, 403);
     await ensureDb();
+    if (ORG_HANDLERS.has(found.h) && !(await aiOrgEnabled())) return json({ error: 'The AI organization module is switched off (Settings → Features).' }, 404);
     if (req.headers.get('x-dc-remote') === '1' && !(await remoteAllowed(method, segs))) return json({ error: 'Remote access is read-only. Do this from the PC, or allow remote approvals in Settings.' }, 403);
     return await found.h(req, found.m);
   } catch (e) {

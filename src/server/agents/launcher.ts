@@ -79,6 +79,97 @@ export function buildLaunchScript(opts: { agent: LaunchAgent; exe: string | null
   return { script: L.join('\r\n'), note };
 }
 
+/** POSIX shell single-quoted literal. */
+export function shq(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
+ * macOS / Linux equivalent of buildLaunchScript: a bash script that changes to the folder, copies the
+ * prompt to the clipboard when a clipboard tool exists, starts the agent and leaves a shell open.
+ * As on Windows it only contains the agent's executable, the folder and the prompt file path.
+ */
+export function buildPosixLaunchScript(opts: { agent: LaunchAgent; exe: string | null; kind: 'cli' | 'app' | null; dir: string; promptFile: string; resumeId?: string; platform?: NodeJS.Platform }): { script: string; note: string } {
+  const mac = (opts.platform ?? process.platform) === 'darwin';
+  const L: string[] = [
+    '#!/usr/bin/env bash',
+    `cd ${shq(opts.dir)} || exit 1`,
+    `p="$(cat ${shq(opts.promptFile)})"`,
+    'if command -v pbcopy >/dev/null 2>&1; then printf "%s" "$p" | pbcopy; elif command -v wl-copy >/dev/null 2>&1; then printf "%s" "$p" | wl-copy; elif command -v xclip >/dev/null 2>&1; then printf "%s" "$p" | xclip -selection clipboard; elif command -v xsel >/dev/null 2>&1; then printf "%s" "$p" | xsel --clipboard --input; fi',
+    `printf '\\033[36m%s\\033[0m\\n' 'DevContinuity: continuation prompt loaded (copied to the clipboard when a clipboard tool is available).'`,
+    `printf '\\033[90m%s\\033[0m\\n' ${shq(`Folder: ${opts.dir}`)} ${shq(`Prompt file: ${opts.promptFile}`)}`,
+  ];
+  const exe = opts.exe ? shq(opts.exe) : null;
+  let note = '';
+  switch (opts.agent) {
+    case 'claude-code':
+      if (!exe) throw new PathError('Claude Code was not found. Install it or set its path in Settings → Agents.');
+      if (opts.resumeId) {
+        L.push(`${exe} --resume ${shq(opts.resumeId)}`);
+        note = 'Opening the original Claude Code session with --resume. If it cannot be resumed, run claude and paste the prompt.';
+      } else {
+        L.push(`${exe} "$p"`);
+        note = 'Claude Code starts with the continuation prompt as its first message.';
+      }
+      break;
+    case 'codex':
+      if (!exe) throw new PathError('Codex was not found. Install it or set its path in Settings → Agents.');
+      L.push(`${exe} "$p"`);
+      note = 'Codex starts with the continuation prompt as its first message.';
+      break;
+    case 'opencode':
+      if (!exe) throw new PathError('OpenCode was not found. Install the CLI (npm i -g opencode-ai) or set its path in Settings → Agents.');
+      L.push(opts.kind === 'app' ? (mac ? `open -a ${exe}` : `${exe} &`) : exe, `echo 'Paste the prompt as the first message (it is also in the prompt file above).'`);
+      note = 'OpenCode starts in the project folder. Paste the prompt as the first message.';
+      break;
+    case 'cursor':
+      if (!exe) throw new PathError('Cursor was not found. Install it or set its path in Settings → Agents.');
+      L.push(`${exe} ${shq(opts.dir)}`, `echo 'Cursor opened. Open the Agent chat and paste the prompt.'`);
+      note = 'Cursor opens the folder; paste the prompt into the Agent chat.';
+      break;
+    case 'terminal':
+      L.push(`echo 'Paste the prompt into any AI tool.'`);
+      note = 'A terminal opens in the folder with the prompt on your clipboard.';
+      break;
+  }
+  L.push('exec "${SHELL:-bash}" -l');
+  return { script: `${L.join('\n')}\n`, note };
+}
+
+/** Linux terminals, in order of preference, and how each one runs a script in a folder. */
+export const POSIX_TERMINALS: { name: string; args: (script: string, dir: string) => string[] }[] = [
+  { name: 'x-terminal-emulator', args: (s) => ['-e', 'bash', s] },
+  { name: 'gnome-terminal', args: (s, d) => ['--working-directory', d, '--', 'bash', s] },
+  { name: 'konsole', args: (s, d) => ['--workdir', d, '-e', 'bash', s] },
+  { name: 'xfce4-terminal', args: (s, d) => ['--working-directory', d, '-x', 'bash', s] },
+  { name: 'kitty', args: (s, d) => ['--directory', d, 'bash', s] },
+  { name: 'alacritty', args: (s, d) => ['--working-directory', d, '-e', 'bash', s] },
+  { name: 'xterm', args: (s) => ['-e', 'bash', s] },
+];
+
+/** The command that opens a new terminal window running the script (macOS: iTerm if installed, else Terminal). */
+export function posixTerminalCommand(platform: NodeJS.Platform, script: string, dir: string, which: (name: string) => string | null, hasApp: (app: string) => boolean = (a) => fs.existsSync(a)): { cmd: string; args: string[] } {
+  if (platform === 'darwin') return { cmd: 'open', args: ['-a', hasApp('/Applications/iTerm.app') ? 'iTerm' : 'Terminal', script] };
+  for (const t of POSIX_TERMINALS) {
+    const bin = which(t.name);
+    if (bin) return { cmd: bin, args: t.args(script, dir) };
+  }
+  throw new PathError('No terminal emulator was found (tried x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, kitty, alacritty, xterm). Copy the prompt instead.');
+}
+
+function which(name: string): string | null {
+  for (const d of (process.env.PATH ?? '').split(path.delimiter)) {
+    if (!d) continue;
+    const p = path.join(d, name);
+    try {
+      if (fs.statSync(p).isFile()) return p;
+    } catch {
+      /* not here */
+    }
+  }
+  return null;
+}
+
 /** Opens a new terminal window in the right folder (or worktree) with the agent started and the prompt loaded. Owner-initiated only. */
 export async function launchAgent(input: { agent: LaunchAgent; projectId?: string; sessionId?: string; dir?: string; resume?: boolean; promptText?: string }): Promise<{ dir: string; note: string; promptFile: string }> {
   const db = prisma();
@@ -100,6 +191,18 @@ export async function launchAgent(input: { agent: LaunchAgent; projectId?: strin
 
   const bin = await findAgent(input.agent);
   const resumeId = input.resume && session?.agent === 'claude-code' && input.agent === 'claude-code' ? session.externalId : undefined;
+
+  if (process.platform !== 'win32') {
+    const { script, note } = buildPosixLaunchScript({ agent: input.agent, exe: bin.path, kind: bin.kind, dir, promptFile, resumeId });
+    // .command makes macOS Terminal/iTerm run it when opened.
+    const scriptFile = path.join(launchDir, `${stamp}.${process.platform === 'darwin' ? 'command' : 'sh'}`);
+    fs.writeFileSync(scriptFile, script, { encoding: 'utf8', mode: 0o700 });
+    const term = posixTerminalCommand(process.platform, scriptFile, dir, which);
+    spawn(term.cmd, term.args, { detached: true, stdio: 'ignore', cwd: dir }).unref();
+    await audit('owner', 'agent.launch', input.agent, { dir, sessionId: session?.id, projectId: project?.id, resume: !!resumeId, terminal: term.cmd });
+    return { dir, note, promptFile };
+  }
+
   const { script, note } = buildLaunchScript({ agent: input.agent, exe: bin.path, kind: bin.kind, dir, promptFile, resumeId });
   const scriptFile = path.join(launchDir, `${stamp}.ps1`);
   fs.writeFileSync(scriptFile, `\uFEFF${script}`, 'utf8');

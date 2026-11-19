@@ -3,6 +3,7 @@ import path from 'node:path';
 import { resolveRoots } from '../adapters';
 import type { AgentId } from '../adapters/types';
 import { notify } from '../audit';
+import { getFallbackAgent, isLimitEnding, limitNotice, rankTargets } from '../handoff/limit';
 import { prisma, setSetting } from '../db';
 import { runImport, silentReporter } from '../import/importer';
 import { isLocked, withLock } from '../lock';
@@ -17,7 +18,7 @@ const MAX_WAIT_MS = 10 * 60_000;
 const POLL_MS = 5 * 60_000;
 
 /** Agents kept in sync automatically (Cursor and generic uploads are imported on request). */
-const AUTO_SYNC_AGENTS: AgentId[] = ['claude-code', 'codex', 'opencode', 'antigravity', 'cline', 'copilot', 'continue', 'live'];
+const AUTO_SYNC_AGENTS: AgentId[] = ['claude-code', 'codex', 'opencode', 'antigravity', 'cline', 'copilot', 'continue', 'aider', 'zed', 'live'];
 
 /** Which changed files (path relative to the watched folder) mean a session changed. */
 const WATCH_FILTER: Partial<Record<AgentId, RegExp>> = {
@@ -28,6 +29,7 @@ const WATCH_FILTER: Partial<Record<AgentId, RegExp>> = {
   cline: /(api_conversation_history|ui_messages)\.json$/i,
   copilot: /chatSessions\/[^/]+\.jsonl?$/i,
   continue: /\.json$/i,
+  zed: /(threads\.db(-wal)?|\.zed\.json)$/i,
   live: /\.jsonl$/i,
 };
 
@@ -53,6 +55,8 @@ export class AutoSync {
     for (const r of await resolveRoots('cline')) targets.push({ agent: 'cline', dir: path.join(r, 'tasks') });
     for (const r of await resolveRoots('copilot')) targets.push({ agent: 'copilot', dir: r });
     for (const r of await resolveRoots('continue')) targets.push({ agent: 'continue', dir: r });
+    for (const r of await resolveRoots('zed')) targets.push({ agent: 'zed', dir: r });
+    // Aider writes into project folders; it is picked up by the periodic poll instead of a watcher.
     for (const r of await resolveRoots('live')) targets.push({ agent: 'live', dir: r });
     for (const t of targets) {
       if (!fs.existsSync(t.dir)) continue;
@@ -119,11 +123,17 @@ export class AutoSync {
 export async function notifyEndings(since: Date) {
   const db = prisma();
   const recent = await db.session.findMany({ where: { importedAt: { gte: since }, isSubagent: false, endedAt: { gte: new Date(Date.now() - 24 * 3600_000) } }, include: { project: { select: { name: true } } } });
+  const fallback = recent.length ? await getFallbackAgent() : 'codex';
   for (const s of recent) {
     const where = s.project?.name ?? s.cwd ?? 'unknown project';
     const link = `/sessions/${s.id}?tab=continue`;
     const key = `ending-${s.id}-${s.endedAt?.getTime()}`;
-    if (s.endState === 'api_error' && /limit|usage|subscription|payment|quota|credit/i.test(s.endStateDetail ?? '')) await notify('error', `Limit hit in ${where}`, `${s.agent}: ${s.endStateDetail}. Continue with another agent from the link.`, link, key);
+    if (isLimitEnding(s.endState, s.endStateDetail)) {
+      // Actionable: the Overview's "Needs attention" card continues it in the preferred fallback agent.
+      const target = rankTargets(s.agent, fallback)[0];
+      const n = limitNotice(s.agent, where, s.endStateDetail, target);
+      await notify('error', n.title, n.body, `/?handoff=${s.id}`, key);
+    }
     else if (s.endState === 'api_error') await notify('error', `Agent stopped with an error in ${where}`, s.endStateDetail ?? undefined, link, key);
     else if (['interrupted_tool', 'interrupted_response', 'awaiting_assistant'].includes(s.endState)) await notify('warning', `Session interrupted in ${where}`, `${s.title ?? s.externalId}: ${s.endStateDetail ?? ''}`, link, key);
     // Finished sessions appear in the activity feed; only problems are worth a notification.

@@ -119,7 +119,57 @@ export interface HandoffInput {
 }
 
 /** Builds the complete handoff folder and its ZIP under data/handoffs/. */
-export async function createHandoff(input: HandoffInput) {
+/**
+ * Applies the owner's "review before sharing" choices: a string replaces a generated file's text,
+ * null leaves the file out. Only files the package actually contains can be changed, and the README
+ * (which explains the package) is always kept.
+ */
+export function applyOverrides(files: Record<string, string>, overrides?: Record<string, string | null>): Record<string, string> {
+  if (!overrides) return files;
+  const out = { ...files };
+  for (const [name, text] of Object.entries(overrides)) {
+    if (!(name in out)) continue;
+    if (text === null) {
+      if (name !== 'README.md') delete out[name];
+    } else if (typeof text === 'string') out[name] = text.slice(0, 2_000_000);
+  }
+  return out;
+}
+
+/** The files a handoff package would contain, without writing anything (shown in the review step). */
+export async function previewHandoff(input: HandoffInput): Promise<{ target: string; files: { name: string; text: string }[] }> {
+  await ensureDb();
+  const target = (TARGET_AGENTS as readonly string[]).includes(input.targetAgent ?? '') ? (input.targetAgent as string) : 'generic';
+  const ctx = await buildResumeContext({ projectId: input.projectId, sessionId: input.sessionId });
+  if (!ctx.project && !ctx.focus) throw Object.assign(new Error('Nothing to hand off: no project or session found.'), { status: 404 });
+  const files = await renderHandoffFiles(ctx, target);
+  return { target, files: Object.entries(files).map(([name, text]) => ({ name, text })) };
+}
+
+async function renderHandoffFiles(ctx: ResumeContext, target: string): Promise<Record<string, string>> {
+  const docs = renderProjectDocs(ctx);
+  const files: Record<string, string> = { 'README.md': readme(ctx, target) };
+  for (const d of DOC_TYPES) files[`${d}.md`] = docs[d];
+  files['LAST_SESSION_SUMMARY.md'] = lastSessionSummary(ctx);
+  files['FILES_TO_INSPECT.md'] = filesToInspect(ctx);
+  files['AGENT_INSTRUCTIONS.md'] = agentInstructions(ctx);
+  for (const agent of TARGET_AGENTS) files[`prompts/${agent}.md`] = renderContinuationPrompt(ctx, agent);
+
+  const sessionIds = [...new Set([ctx.focus?.id, ...ctx.recentSessions.map((s) => s.id)].filter((x): x is string => !!x))];
+  const sessions = await prisma().session.findMany({ where: { id: { in: sessionIds } }, orderBy: { endedAt: 'desc' } });
+  files['SESSION_REFERENCES.json'] = JSON.stringify(
+    {
+      note: 'Sessions this handoff was built from. archivePath is the byte-exact safe copy kept by DevContinuity; sourcePath is the original location, which was only ever read.',
+      focusSessionId: ctx.focus?.id ?? null,
+      sessions: sessions.map((s) => ({ id: s.id, agent: s.agent, externalId: s.externalId, title: s.title, startedAt: s.startedAt, endedAt: s.endedAt, endState: s.endState, endStateDetail: s.endStateDetail, cwd: s.cwd, worktree: s.worktree, gitBranch: s.gitBranch, model: s.primaryModel, events: s.eventCount, sourcePath: s.sourcePath, archivePath: s.archivePath, sha256: s.sha256 })),
+    },
+    null,
+    2,
+  );
+  return files;
+}
+
+export async function createHandoff(input: HandoffInput & { overrides?: Record<string, string | null> }) {
   await ensureDb();
   const target = (TARGET_AGENTS as readonly string[]).includes(input.targetAgent ?? '') ? (input.targetAgent as string) : 'generic';
   const ctx = await buildResumeContext({ projectId: input.projectId, sessionId: input.sessionId });
@@ -131,26 +181,7 @@ export async function createHandoff(input: HandoffInput) {
   const dir = ensureDir(path.join(base, 'handoff'));
   ensureDir(path.join(dir, 'prompts'));
 
-  const docs = renderProjectDocs(ctx);
-  const files: Record<string, string> = { 'README.md': readme(ctx, target) };
-  for (const d of DOC_TYPES) files[`${d}.md`] = docs[d];
-  files['LAST_SESSION_SUMMARY.md'] = lastSessionSummary(ctx);
-  files['FILES_TO_INSPECT.md'] = filesToInspect(ctx);
-  files['AGENT_INSTRUCTIONS.md'] = agentInstructions(ctx);
-  for (const agent of TARGET_AGENTS) files[`prompts/${agent}.md`] = renderContinuationPrompt(ctx, agent);
-
-  const sessionIds = [...new Set([ctx.focus?.id, ...ctx.recentSessions.map((s) => s.id)].filter((x): x is string => !!x))];
-  const sessions = await db.session.findMany({ where: { id: { in: sessionIds } }, orderBy: { endedAt: 'desc' } });
-  files['SESSION_REFERENCES.json'] = JSON.stringify(
-    {
-      note: 'Sessions this handoff was built from. archivePath is the byte-exact safe copy kept by DevContinuity; sourcePath is the original location, which was only ever read.',
-      focusSessionId: ctx.focus?.id ?? null,
-      sessions: sessions.map((s) => ({ id: s.id, agent: s.agent, externalId: s.externalId, title: s.title, startedAt: s.startedAt, endedAt: s.endedAt, endState: s.endState, endStateDetail: s.endStateDetail, cwd: s.cwd, worktree: s.worktree, gitBranch: s.gitBranch, model: s.primaryModel, events: s.eventCount, sourcePath: s.sourcePath, archivePath: s.archivePath, sha256: s.sha256 })),
-    },
-    null,
-    2,
-  );
-
+  const files = applyOverrides(await renderHandoffFiles(ctx, target), input.overrides);
   for (const [name, content] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), content, 'utf8');
   const manifest = {
     generator: 'DevContinuity',

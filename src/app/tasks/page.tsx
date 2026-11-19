@@ -27,16 +27,16 @@ export default async function TasksPage({ searchParams }: PageProps<'/tasks'>) {
   const base = `/tasks${qs({ status: s('status'), projectId: s('projectId'), source: s('source'), verification: s('verification'), q: s('q') })}`;
   return (
     <div>
-      <PageHeader title={t.tasks} subtitle="Tasks are derived from user requests and agent todo lists, each with evidence. An agent claiming “done” is recorded as requires verification. Only you can mark a task completed." actions={<NewItemForm kind="task" projects={projects} />} />
+      <PageHeader title={t.tasks} subtitle={t.tasksSubtitle} actions={<NewItemForm kind="task" projects={projects} />} />
       <div className="mb-4 flex flex-wrap gap-2">
         {groups.map((g) => <Link key={g.status} href={`/tasks?status=${g.status}`} className="inline-flex items-center gap-1.5"><StatusPill status={g.status} /><span className="text-xs tabular-nums text-muted-foreground">{fmtNum(g._count)}</span></Link>)}
       </div>
       <FilterBar>
-        <TextFilter name="q" value={s('q')} label="Search" />
-        <Select name="status" value={s('status')} label="Status" options={['completed', 'in_progress', 'pending', 'blocked', 'failed', 'requires_verification', 'cancelled'].map((x) => [x, label(x)])} />
-        <Select name="verification" value={s('verification')} label="Verification" options={['verified', 'evidence_found', 'ai_reported', 'unverified', 'failed'].map((x) => [x, label(x)])} />
-        <Select name="source" value={s('source')} label="Source" options={[['user_request', 'User request'], ['agent_todo', 'Agent todo'], ['ai_extracted', 'AI extracted'], ['manual', 'Manual']]} />
-        <Select name="projectId" value={s('projectId')} label="Project" options={projects.map((p) => [p.id, p.name])} />
+        <TextFilter name="q" value={s('q')} label={t.fSearch} />
+        <Select name="status" value={s('status')} label={t.fStatus} options={['completed', 'in_progress', 'pending', 'blocked', 'failed', 'requires_verification', 'cancelled'].map((x) => [x, label(x)])} />
+        <Select name="verification" value={s('verification')} label={t.fVerification} options={['verified', 'evidence_found', 'ai_reported', 'unverified', 'failed'].map((x) => [x, label(x)])} />
+        <Select name="source" value={s('source')} label={t.fSource} options={[['user_request', t.srcUserRequest], ['agent_todo', t.srcAgentTodo], ['ai_extracted', t.srcAiExtracted], ['manual', t.srcManual]]} />
+        <Select name="projectId" value={s('projectId')} label={t.fProject} options={projects.map((p) => [p.id, p.name])} />
       </FilterBar>
       <div className="space-y-2">
         {rows.map((task) => {
@@ -50,16 +50,16 @@ export default async function TasksPage({ searchParams }: PageProps<'/tasks'>) {
                   <div className="text-sm text-slate-100">{task.title}</div>
                   <div className="mt-0.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
                     {task.project && <Link href={`/projects/${task.project.id}`} className="hover:text-slate-200">{task.project.name}</Link>}
-                    <span>{label(task.source)}</span><span>{task.agent ?? 'manual'}</span><span>priority {task.priority}</span><span>{fmtDate(task.occurredAt)}</span>
+                    <span>{label(task.source)}</span><span>{task.agent ?? t.manualWord}</span><span>{t.priorityWord} {task.priority}</span><span>{fmtDate(task.occurredAt)}</span>
                     <VerifyTag v={task.verification} />
-                    {task.aiReportedStatus && <span>agent reported: {task.aiReportedStatus}</span>}
-                    {task.sessionId && <Link href={`/sessions/${task.sessionId}${task.sourceEventSeq != null ? `?seq=${task.sourceEventSeq}` : ''}`} className="text-primary">source session</Link>}
+                    {task.aiReportedStatus && <span>{t.agentReported}: {task.aiReportedStatus}</span>}
+                    {task.sessionId && <Link href={`/sessions/${task.sessionId}${task.sourceEventSeq != null ? `?seq=${task.sourceEventSeq}` : ''}`} className="text-primary">{t.sourceSession}</Link>}
                   </div>
                 </div>
                 <TaskStatusControl id={task.id} status={task.status} />
               </div>
               <details className="mt-2">
-                <summary className="cursor-pointer text-[11px] text-slate-500">Evidence ({ev.length}){files.length ? ` · ${files.length} related files` : ''}</summary>
+                <summary className="cursor-pointer text-[11px] text-slate-500">{t.evidenceWord} ({ev.length}){files.length ? ` · ${files.length} ${t.relatedFiles}` : ''}</summary>
                 <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">{ev.map((e, i) => <li key={i}><span className="text-slate-400">{e.type.replace(/_/g, ' ')}:</span> {e.detail}</li>)}</ul>
                 {files.length > 0 && <div className="mt-1 font-mono text-[11px] text-slate-500">{files.slice(0, 15).join(' · ')}</div>}
               </details>

@@ -93,6 +93,49 @@ function pascalHook(p: Rec, ev: string): LiveOp[] {
   }
 }
 
+/**
+ * Kiro CLI agent hooks (experimental): camelCase event names with Claude Code-style fields
+ * (prompt, tool_name, tool_input, tool_response), mapped onto the PascalCase handler.
+ */
+export const KIRO_EVENTS: Record<string, string> = { agentSpawn: 'SessionStart', userPromptSubmit: 'UserPromptSubmit', preToolUse: 'PreToolUse', postToolUse: 'PostToolUse', stop: 'Stop' };
+
+/**
+ * GitHub Copilot CLI hooks (experimental): the event name comes from the hook command's argument,
+ * the payload is camelCase ({ prompt }, { toolName, toolArgs (JSON text), toolResult: { resultType, textResultForLlm } }).
+ */
+export function copilotCliHook(p: Rec, ev: string): LiveOp[] {
+  const name = s(p.toolName) ?? 'tool';
+  let input: unknown = p.toolArgs;
+  if (typeof input === 'string') {
+    try {
+      input = JSON.parse(input);
+    } catch {
+      /* keep the text */
+    }
+  }
+  switch (ev) {
+    case 'userPromptSubmitted':
+      return s(p.prompt) ? [{ op: 'prompt', text: s(p.prompt)! }] : [];
+    case 'preToolUse':
+      return [{ op: 'tool_call', name, input, ...toolFacts(name, input) }];
+    case 'postToolUse': {
+      const res = rec(p.toolResult) ?? {};
+      const kind = s(res.resultType);
+      return [{ op: 'tool_result', name, input, ...toolFacts(name, input), output: res.textResultForLlm ?? p.toolResult, isError: kind === 'failure' || kind === 'denied' }];
+    }
+    case 'errorOccurred': {
+      const e = rec(p.error) ?? {};
+      return [{ op: 'error', text: `${s(e.name) ?? 'Error'}: ${s(e.message) ?? 'unknown error'}` }];
+    }
+    case 'sessionStart':
+      return [{ op: 'meta', name: ev, text: s(p.initialPrompt) ?? s(p.source) }];
+    case 'sessionEnd':
+      return [{ op: 'turn_end', reason: s(p.reason) }];
+    default:
+      return [{ op: 'meta', name: ev }];
+  }
+}
+
 /** Cursor hooks (camelCase event names). */
 function cursorHook(p: Rec, ev: string): LiveOp[] {
   switch (ev) {
@@ -242,9 +285,9 @@ export function normalizeLive(r: LiveRecord): NormalizedLive {
     const o = otelEvent(p);
     return { ...base, ops: o.ops, event: o.ev, model: o.model };
   }
-  const hookEv = s(p.hook_event_name) ?? s(p.hookEventName);
+  const hookEv = s(p.hook_event_name) ?? s(p.hookEventName) ?? s(r.event);
   if (hookEv) {
-    const ops = /^[a-z]/.test(hookEv) ? cursorHook(p, hookEv) : pascalHook(p, hookEv);
+    const ops = r.agent === 'copilot-cli' ? copilotCliHook(p, hookEv) : r.agent === 'kiro' ? pascalHook(p, KIRO_EVENTS[hookEv] ?? hookEv) : /^[a-z]/.test(hookEv) ? cursorHook(p, hookEv) : pascalHook(p, hookEv);
     return { ...base, ops, event: hookEv, model: s(p.model) };
   }
   const wsEv = s(p.agent_action_name);

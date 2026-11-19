@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Activity, Archive, ArrowRightLeft, BookMarked, Bot, BookOpen, Building2, CalendarClock, Clock, Crown, DatabaseBackup, DollarSign, FileDiff, FolderKanban, GitBranch, Inbox, LayoutDashboard, ListChecks, MessageSquareText, MessagesSquare, Search, Settings, ShieldCheck, Upload, Languages, ClipboardCheck, Send, Menu, X } from 'lucide-react';
+import { Sparkles, Store, Activity, Archive, ArrowRightLeft, BookMarked, Bot, BookOpen, Building2, CalendarClock, Clock, Crown, DatabaseBackup, DollarSign, FileDiff, FolderKanban, GitBranch, Inbox, LayoutDashboard, ListChecks, MessageSquareText, MessagesSquare, Search, Settings, ShieldCheck, Upload, Languages, ClipboardCheck, Send, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Dict, Lang } from '@/lib/i18n';
 import { KillSwitch, NotificationBell } from './common';
@@ -15,7 +15,9 @@ const CORE_NAV: NavGroup[] = [
   { group: 'overviewGroup', items: [
     { href: '/', key: 'dashboard', icon: LayoutDashboard, exact: true },
     { href: '/agents', key: 'agents', icon: Bot },
+    { href: '/skills', key: 'skillsShop', icon: Store },
     { href: '/search', key: 'search', icon: Search },
+    { href: '/wrapped', key: 'wrapped', icon: Sparkles },
   ] },
   { group: 'historyGroup', items: [
     { href: '/projects', key: 'projects', icon: FolderKanban },
@@ -53,7 +55,7 @@ const ORG_NAV: NavGroup = { group: 'aiOrg', items: [
   { href: '/activity', key: 'activity', icon: Activity },
 ] };
 
-export function Shell({ t, lang, aiOrg, children }: { t: Dict; lang: Lang; aiOrg: boolean; children: ReactNode }) {
+export function Shell({ t, lang, aiOrg, demo = false, children }: { t: Dict; lang: Lang; aiOrg: boolean; demo?: boolean; children: ReactNode }) {
   const NAV = aiOrg ? [...CORE_NAV, ORG_NAV] : CORE_NAV;
   const pathname = usePathname();
   const router = useRouter();
@@ -129,6 +131,13 @@ export function Shell({ t, lang, aiOrg, children }: { t: Dict; lang: Lang; aiOrg
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {demo && (
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 bg-gradient-to-r from-amber-500/90 to-orange-500/90 px-3 py-1.5 text-center text-xs font-medium text-black" role="note">
+            <span className="rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">{t.demoBadge}</span>
+            <span>{t.demoRibbon}</span>
+            <code className="rounded bg-black/15 px-1.5 py-0.5 font-mono" dir="ltr">npx devcontinuity</code>
+          </div>
+        )}
         <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-background/85 px-3 py-2.5 backdrop-blur sm:px-4 lg:px-8">
           <button onClick={() => setOpen(true)} className="grid size-9 shrink-0 place-items-center rounded-lg border border-border text-slate-300 hover:bg-secondary lg:hidden" aria-label={t.menu}>
             <Menu className="size-5" />

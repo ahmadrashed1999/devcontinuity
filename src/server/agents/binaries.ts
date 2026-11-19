@@ -18,21 +18,42 @@ const home = os.homedir();
 const appData = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming');
 const localAppData = process.env.LOCALAPPDATA ?? path.join(home, 'AppData', 'Local');
 
-const NAMES: Record<LaunchAgent, string[]> = {
-  'claude-code': ['claude.exe', 'claude.cmd', 'claude.ps1'],
-  codex: ['codex.exe', 'codex.ps1', 'codex.cmd'],
-  opencode: ['opencode.exe', 'opencode.ps1', 'opencode.cmd'],
-  cursor: ['cursor.cmd', 'cursor.exe'],
-  terminal: ['wt.exe'],
-};
+const WIN = process.platform === 'win32';
 
-const KNOWN: Record<LaunchAgent, { file: string; kind: 'cli' | 'app' }[]> = {
-  'claude-code': [{ file: path.join(home, '.local', 'bin', 'claude.exe'), kind: 'cli' }, { file: path.join(appData, 'npm', 'claude.ps1'), kind: 'cli' }, { file: path.join(home, '.claude', 'local', 'claude.exe'), kind: 'cli' }],
-  codex: [{ file: path.join(appData, 'npm', 'codex.ps1'), kind: 'cli' }, { file: path.join(appData, 'npm', 'codex.cmd'), kind: 'cli' }],
-  opencode: [{ file: path.join(appData, 'npm', 'opencode.ps1'), kind: 'cli' }, { file: path.join(home, '.opencode', 'bin', 'opencode.exe'), kind: 'cli' }, { file: path.join(localAppData, 'Programs', '@opencode-aidesktop', 'OpenCode.exe'), kind: 'app' }],
-  cursor: [{ file: path.join(localAppData, 'Programs', 'cursor', 'resources', 'app', 'bin', 'cursor.cmd'), kind: 'cli' }, { file: path.join(localAppData, 'Programs', 'cursor', 'Cursor.exe'), kind: 'app' }],
-  terminal: [{ file: path.join(localAppData, 'Microsoft', 'WindowsApps', 'wt.exe'), kind: 'cli' }],
-};
+const NAMES: Record<LaunchAgent, string[]> = WIN
+  ? {
+      'claude-code': ['claude.exe', 'claude.cmd', 'claude.ps1'],
+      codex: ['codex.exe', 'codex.ps1', 'codex.cmd'],
+      opencode: ['opencode.exe', 'opencode.ps1', 'opencode.cmd'],
+      cursor: ['cursor.cmd', 'cursor.exe'],
+      terminal: ['wt.exe'],
+    }
+  : {
+      'claude-code': ['claude'],
+      codex: ['codex'],
+      opencode: ['opencode'],
+      cursor: ['cursor'],
+      // macOS: Terminal/iTerm are opened with "open -a"; Linux: see POSIX_TERMINALS in launcher.ts.
+      terminal: ['x-terminal-emulator', 'gnome-terminal', 'konsole', 'xfce4-terminal', 'kitty', 'alacritty', 'xterm'],
+    };
+
+const unixBins = (name: string) => [path.join(home, '.local', 'bin', name), '/opt/homebrew/bin/' + name, '/usr/local/bin/' + name, path.join(home, '.npm-global', 'bin', name)];
+
+const KNOWN: Record<LaunchAgent, { file: string; kind: 'cli' | 'app' }[]> = WIN
+  ? {
+      'claude-code': [{ file: path.join(home, '.local', 'bin', 'claude.exe'), kind: 'cli' }, { file: path.join(appData, 'npm', 'claude.ps1'), kind: 'cli' }, { file: path.join(home, '.claude', 'local', 'claude.exe'), kind: 'cli' }],
+      codex: [{ file: path.join(appData, 'npm', 'codex.ps1'), kind: 'cli' }, { file: path.join(appData, 'npm', 'codex.cmd'), kind: 'cli' }],
+      opencode: [{ file: path.join(appData, 'npm', 'opencode.ps1'), kind: 'cli' }, { file: path.join(home, '.opencode', 'bin', 'opencode.exe'), kind: 'cli' }, { file: path.join(localAppData, 'Programs', '@opencode-aidesktop', 'OpenCode.exe'), kind: 'app' }],
+      cursor: [{ file: path.join(localAppData, 'Programs', 'cursor', 'resources', 'app', 'bin', 'cursor.cmd'), kind: 'cli' }, { file: path.join(localAppData, 'Programs', 'cursor', 'Cursor.exe'), kind: 'app' }],
+      terminal: [{ file: path.join(localAppData, 'Microsoft', 'WindowsApps', 'wt.exe'), kind: 'cli' }],
+    }
+  : {
+      'claude-code': [...unixBins('claude'), path.join(home, '.claude', 'local', 'claude')].map((file) => ({ file, kind: 'cli' as const })),
+      codex: unixBins('codex').map((file) => ({ file, kind: 'cli' as const })),
+      opencode: [path.join(home, '.opencode', 'bin', 'opencode'), ...unixBins('opencode')].map((file) => ({ file, kind: 'cli' as const })),
+      cursor: [{ file: '/Applications/Cursor.app/Contents/Resources/app/bin/cursor', kind: 'cli' }, { file: '/usr/bin/cursor', kind: 'cli' }, { file: '/opt/Cursor/cursor', kind: 'app' }],
+      terminal: [],
+    };
 
 function isFile(p: string): boolean {
   try {
@@ -65,7 +86,7 @@ export async function detectAgents(): Promise<AgentBinary[]> {
   const custom = await getSetting<Partial<Record<LaunchAgent, string>>>('agentPaths', {});
   return LAUNCH_AGENTS.map((agent) => {
     const c = custom[agent]?.trim();
-    if (c && isFile(c)) return { agent, path: c, kind: /\.exe$/i.test(c) && /OpenCode\.exe$|Cursor\.exe$/i.test(c) ? 'app' : 'cli', source: 'setting' };
+    if (c && isFile(c)) return { agent, path: c, kind: /OpenCode\.exe$|Cursor\.exe$|\.app$/i.test(c) ? 'app' : 'cli', source: 'setting' };
     const p = onPath(NAMES[agent]);
     if (p) return { agent, path: p, kind: 'cli', source: 'path' };
     const k = KNOWN[agent].find((x) => isFile(x.file));

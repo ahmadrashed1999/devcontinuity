@@ -6,24 +6,34 @@ DevContinuity is a Next.js app (UI + REST API), a background service (the orches
 src/
   app/                    Next.js pages (server components) and the REST API (app/api/[...path])
   components/dc/          UI components
+  modules/org/            optional "AI organization" module (server, API routes, UI), off by default
+  app/(org)/              its pages, 404 while the module is off
+  lib/                    shared client/server code: i18n, formatting, review helpers, Skills Shop catalog
   server/
     adapters/             one module per agent + the unified model (types.ts)
     live/                 live capture: spool store, normalizer, OTLP, connect, dedupe
     import/               safe archive copies, project resolution, the importer
     sync/watcher.ts       auto-sync: watches agent folders + the live spool
-    handoff/              continuation briefings and handoff packages
+    handoff/              continuation briefings, handoff packages, limit handoffs (limit.ts)
+    memory.ts             cross-agent shared memory for the project_context MCP tool
+    wrapped.ts, compare.ts  AI Coding Wrapped and the agent comparison
+    demo.ts               read-only demo mode (DEVCONTINUITY_DEMO=1)
+    scheduler.ts, defaults.ts  schedules and default prompts/schedules
     intelligence/         task candidates, repository facts, knowledge documents
     verify/               evidence-based triage and allow-listed test runs
     git/                  read-only Git inspection, worktree analysis
     ai/                   optional AI gateway (Anthropic + OpenAI-compatible providers)
-    org/                  optional "AI organization" module (off by default)
     security/             path safety, secret redaction, encrypted key vault
 scripts/
   dc.ts                   CLI
   mcp.ts                  MCP server (stdio)
   hook.mjs                hook recorder (dependency-free, never blocks the agent)
   orchestrator.ts         background service
+  paths.mjs               app root + data folder rules shared by every entry point
   setup.mjs / serve.mjs   cross-platform setup and launcher
+  pack-check.mjs          packs, scans and test-installs the npm package
+  demo/                   demo workspace, screenshots, GIF, RTL check
+bin/devcontinuity.mjs     the npx entry point
   tray.ps1 / startup.ps1  Windows tray icon and start-with-Windows
 prisma/                   schema and migrations
 tests/                    vitest suites with fixtures for every adapter and the live path

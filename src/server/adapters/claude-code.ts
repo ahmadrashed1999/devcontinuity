@@ -305,6 +305,10 @@ export const claudeCodeAdapter: AgentAdapter = {
     let collapsed = 0;
     let customTitle: string | undefined;
     let aiTitle: string | undefined;
+    // Token usage per API response. Claude Code repeats a response's usage on every content block of
+    // that message, so it is counted once per message id.
+    const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, requests: 0 };
+    const usageSeen = new Set<string>();
     let summaryTitle: string | undefined;
     let lastPrompt: string | undefined;
     let signatureOnlyThinking = 0;
@@ -399,6 +403,17 @@ export const claudeCodeAdapter: AgentAdapter = {
         const msg = asRecord(rec.message);
         const model = str(msg?.model);
         acc.noteModel(model);
+        const u = asRecord(msg?.usage);
+        const mid = str(msg?.id) ?? str(rec.uuid);
+        if (u && (!mid || !usageSeen.has(mid))) {
+          if (mid) usageSeen.add(mid);
+          const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+          usage.inputTokens += n(u.input_tokens);
+          usage.outputTokens += n(u.output_tokens);
+          usage.cacheReadTokens += n(u.cache_read_input_tokens);
+          usage.cacheWriteTokens += n(u.cache_creation_input_tokens);
+          usage.requests++;
+        }
         const stop = msg?.stop_reason;
         const content = Array.isArray(msg?.content) ? (msg?.content as unknown[]) : [];
         if (rec.isApiErrorMessage === true) {
@@ -556,6 +571,8 @@ export const claudeCodeAdapter: AgentAdapter = {
       pullRequests: [...prLinks.values()],
       titles: { custom: customTitle ?? null, ai: aiTitle ?? null },
       truncatedTail,
+      // Same shape as the other adapters; cost comes from Claude Code's own cost records when present.
+      usage: usage.requests ? { ...usage, costUsd: (done.providerMeta.cost as { totalCostUSD?: number } | undefined)?.totalCostUSD ?? null } : null,
     });
     return done;
   },

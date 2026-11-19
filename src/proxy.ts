@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { NextResponse, type NextRequest } from 'next/server';
 
@@ -10,7 +11,7 @@ let cached: string | undefined;
 /** Same token file as src/server/config.ts apiToken(); kept self-contained so the proxy bundle stays small. */
 function apiToken(): string {
   if (cached) return cached;
-  const dir = process.env.DEVCONTINUITY_DATA_DIR?.trim() || path.join(process.cwd(), 'data');
+  const dir = process.env.DEVCONTINUITY_DATA_DIR?.trim() || (process.env.DEVCONTINUITY_PACKAGED === '1' ? path.join(os.homedir(), '.devcontinuity') : path.join(process.cwd(), 'data'));
   const file = path.join(dir, '.api-token');
   try {
     const t = fs.readFileSync(file, 'utf8').trim();
@@ -76,7 +77,9 @@ export async function proxy(req: NextRequest) {
   const host = (req.headers.get('host') ?? '').toLowerCase();
   const hostname = host.replace(/:\d+$/, '');
   const local = LOCAL_HOSTS.has(hostname);
-  if (!local) {
+  // The read-only public demo (DEVCONTINUITY_DEMO=1) is served on any host name; the API route refuses every write.
+  const demo = process.env.DEVCONTINUITY_DEMO === '1';
+  if (!local && !demo) {
     const hosts = (process.env.DEVCONTINUITY_REMOTE_HOSTS ?? '').toLowerCase().split(',').map((x) => x.trim()).filter(Boolean);
     if (process.env.DEVCONTINUITY_ALLOW_REMOTE !== '1' || !hosts.includes(hostname)) return new NextResponse('DevContinuity only accepts local requests (open it via http://localhost).', { status: 403 });
     if (!(await verifyAccess(req))) return new NextResponse('Remote access requires a valid Cloudflare Access login.', { status: 403 });
@@ -104,7 +107,8 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next({ request: { headers } });
   }
   const res = NextResponse.next({ request: { headers } });
-  if (!same(req.cookies.get(COOKIE)?.value, token)) res.cookies.set(COOKIE, token, { httpOnly: true, sameSite: 'strict', path: '/', secure: !local });
+  const secure = demo ? req.headers.get('x-forwarded-proto') === 'https' || req.nextUrl.protocol === 'https:' : !local;
+  if (!same(req.cookies.get(COOKIE)?.value, token)) res.cookies.set(COOKIE, token, { httpOnly: true, sameSite: 'strict', path: '/', secure });
   return res;
 }
 
