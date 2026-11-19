@@ -4,6 +4,16 @@ This guide takes you from a fresh install to a working, cross-agent log in about
 
 ## 1. Install and start
 
+The quickest way needs only Node.js 22.5+:
+
+```bash
+npx devcontinuity
+```
+
+It keeps its data in `~/.devcontinuity`, starts the UI and the background sync, and opens the browser. Every command below also works as `npx devcontinuity <command>` instead of `npm run dc -- <command>`.
+
+From source:
+
 ```bash
 git clone https://github.com/ahmadrashed1999/devcontinuity.git
 cd devcontinuity
@@ -60,11 +70,13 @@ Optional extras:
 
 ## 5. Continue work with another agent
 
-When an agent hits a limit or you want a second opinion:
+When an agent stops on a usage, rate or billing limit, the **Overview** shows a card for it (and the bell a notification): one click continues the same work in your fallback agent (Settings → Agents). Any time you want to switch agents or get a second opinion:
 
 1. Open the session (or the project) and choose **Continue**.
 2. Pick the target agent. DevContinuity builds a briefing: the last request, the last answer, unfinished tasks, files changed, recent errors and the current Git state.
-3. Copy it, or click **Open in Claude Code / Codex / OpenCode / Cursor** to start that agent in the right folder with the briefing loaded.
+3. Review it (redacted secrets, secret-looking strings, e-mails and home paths are highlighted; untick anything you do not want to share), then copy it, or click **Open in Claude Code / Codex / OpenCode / Cursor** to start that agent in the right folder with the briefing loaded (Windows, macOS and Linux).
+
+To make agents share memory on their own, connect them (step 3) and, in **Projects → project → Agent rules**, sync with *Shared memory* ticked: each agent then calls `project_context` when it starts and `log_summary` when it finishes.
 
 `npm run dc -- handoff --project my-app --drop-in` writes the full package into the repository (`.devcontinuity/RESUME.md`), so any agent can be told "read `.devcontinuity/RESUME.md` and continue".
 
@@ -72,7 +84,13 @@ When an agent hits a limit or you want a second opinion:
 
 Agents often say "done" when they are not. Every such claim becomes a task marked **Needs checking**. **Verify & Triage** compares each claim with evidence (were the edits really made? does the commit exist?) and lets you run your test or build command. A task only becomes **Completed** when you confirm it.
 
-## 7. Back up
+## 7. Look back: Wrapped, comparison, skills
+
+- **AI Coding Wrapped** shows a month or a year in numbers per agent and downloads a share image (`npx devcontinuity wrapped --month 2026-11` in a terminal).
+- **Connected agents → Compare agents** puts completion, interruption and error rates, tools per prompt, files per session and cost per finished session side by side.
+- **Skills Shop** lists the most useful MCP servers, skills and rules per agent with install steps for each agent.
+
+## 8. Back up
 
 **Backups** creates a snapshot of the database and knowledge (optionally the full archive). It can encrypt with a passphrase and copy to a synced folder (Google Drive, OneDrive, Dropbox) or Cloudflare R2.
 

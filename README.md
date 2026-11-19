@@ -20,7 +20,9 @@
 
 You use Claude Code in the morning, Codex after lunch, Antigravity or Cursor for a UI task, and Copilot in VS Code. Each one keeps its history in its own place and format, and none of them knows what the others did. DevContinuity collects all of it into one searchable timeline on your own machine, shows what each agent actually changed, and lets any agent pick up where another one stopped.
 
-- **Every agent, one timeline:** Claude Code, Codex, OpenCode, Antigravity, Cline, Roo Code, Kilo Code, GitHub Copilot Chat, Continue, Gemini CLI, Cursor, Windsurf, and anything that can send an HTTP request.
+- **Every agent, one timeline:** Claude Code, Codex, OpenCode, Antigravity, Cline, Roo Code, Kilo Code, GitHub Copilot Chat, Continue, Gemini CLI, Cursor, Windsurf, Aider, Zed, ChatGPT and Claude.ai exports, Qwen Code, Copilot CLI, Kiro, and anything that can send an HTTP request.
+- **Hit a limit? Keep going:** when an agent stops on its usage limit, one click continues the same work in another agent with a reviewed briefing.
+- **Your agents finally share memory:** the `project_context` MCP tool tells any agent what the others did in this folder.
 - **Local-first:** runs on your computer and keeps your data in one folder. Your agents' original files are only ever read, never modified.
 - **Continue anywhere:** a ready-to-paste briefing (last request, last answer, changed files, errors, Git state) lets another agent take over a project or session.
 - **Trust, but verify:** agent "I'm done" claims are tracked as claims; DevContinuity checks recorded edits and commits against your actual files and Git.
@@ -104,12 +106,25 @@ New here? Read the **[usage guide](docs/USAGE.md)**: it walks through the first 
 | Cline, Roo Code, Kilo Code | Task files in VS Code, Cursor, Windsurf, Antigravity, Trae… | Automatic |
 | GitHub Copilot Chat | VS Code chat sessions, in every VS Code-family editor | Automatic |
 | Continue | `~/.continue/sessions` | Automatic |
-| Gemini CLI | Hooks (+ optional OpenTelemetry for token usage) | `npm run dc -- connect gemini-cli --yes` |
-| Cursor | Hooks | `npm run dc -- connect cursor --yes` |
-| Windsurf | Hooks (its own history is encrypted) | `npm run dc -- connect windsurf --yes` |
+| Aider | `.aider.chat.history.md` (+ prompt times from `.aider.input.history`) in your project folders | Automatic for known projects; add other folders in Settings |
+| Zed *(experimental)* | Text threads (`conversations/*.zed.json`) and agent threads (`threads/threads.db`) | Automatic |
+| ChatGPT | Data export (`conversations.json` or the ZIP) | Upload in the **Import Center** |
+| Claude.ai | Data export (`conversations.json` or the ZIP) | Upload in the **Import Center** |
+| Gemini CLI | Hooks (+ optional OpenTelemetry for token usage) | `npx devcontinuity connect gemini-cli --yes` |
+| Cursor | Hooks | `npx devcontinuity connect cursor --yes` |
+| Windsurf | Hooks (its own history is encrypted) | `npx devcontinuity connect windsurf --yes` |
+| Qwen Code *(experimental)* | Gemini-style hooks, MCP, optional OpenTelemetry | `npx devcontinuity connect qwen-code --yes` |
+| Copilot CLI *(experimental)* | MCP + per-repository hooks file (shown when you connect) | `npx devcontinuity connect copilot-cli --yes` |
+| Kiro *(experimental)* | MCP + Kiro CLI agent hooks (shown when you connect) | `npx devcontinuity connect kiro --yes` |
 | Anything else | HTTP API, OpenTelemetry logs, or the MCP `log_summary` tool | See [Any other tool](#any-other-tool) |
 
-"Connect" is also one click on the **Connected agents** page. It shows exactly which config files it will change, backs up the originals first, and only adds or removes DevContinuity's own entries. `npm run dc -- disconnect <agent> --yes` undoes it.
+"Connect" is also one click on the **Connected agents** page. It shows exactly which config files it will change, backs up the originals first, and only adds or removes DevContinuity's own entries. `npx devcontinuity disconnect <agent> --yes` undoes it. *Experimental* recipes were built from each tool's published formats and tested with fixtures, not yet on every version; please report what you see.
+
+## When an agent hits its limit
+
+When a session stops on a usage, rate or billing limit (Claude Code's "You've hit your session limit", HTTP 429, quota or credit errors), DevContinuity notifies you and puts a card at the top of the **Overview**: *"Claude Code hit its limit in acme-shop-api — Continue in Codex"*. One click opens the next agent in the project folder with a briefing (last request, files changed, errors, Git state); for agents it cannot open, it copies the briefing. Pick your preferred fallback agent in **Settings → Agents**. Opening agents works on Windows (Windows Terminal/PowerShell), macOS (iTerm or Terminal) and Linux (gnome-terminal, konsole, xterm and others).
+
+Every briefing and handoff package goes through **Review before sharing** first: you see the exact text, with redacted secrets, secret-looking strings, e-mail addresses and home-folder paths highlighted, and you can leave out any section (or whole files of a package) before it is copied or exported.
 
 ## How it works
 
@@ -154,21 +169,37 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Check what agents claimed was done | **Verify & Triage** |
 | Keep one rules file for every agent | Project → *Agent rules* (writes CLAUDE.md, AGENTS.md, Cursor rules, GEMINI.md) |
 | Track spending and usage limits | **Costs & Limits** |
+| See your month or year with AI agents, and share it | **AI Coding Wrapped** (download a 1200×630 image, drawn in your browser) |
+| Compare agents: finish, interruption and error rates, tools per prompt, files per session, cost per finished session | **Connected agents → Compare agents** |
+| Find the best skills and MCP servers for each agent, and how to install and use them | **Skills Shop** |
 | Back up everything (optionally encrypted to the cloud) | **Backups** |
 
 The UI is available in English and Arabic (right-to-left) and works on phones.
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/wrapped.png" alt="AI Coding Wrapped: a month with every agent in numbers" /><br /><sub><b>AI Coding Wrapped:</b> sessions, prompts, tool calls, tokens and outcomes per agent, with a shareable image.</sub></td>
+    <td width="50%"><img src="docs/images/skills.png" alt="Skills Shop: best MCP servers and skills per agent" /><br /><sub><b>Skills Shop:</b> the most useful skills and MCP servers per agent, by category, with install steps for each agent.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/compare.png" alt="Agent comparison table" /><br /><sub><b>Compare agents:</b> honest "not enough data" instead of ranking small samples.</sub></td>
+  </tr>
+</table>
+
 ## CLI
 
+With npx (or `devcontinuity` after `npm i -g devcontinuity`; from a checkout, `npm run dc --`):
+
 ```bash
-npm run dc -- agents                          # what is connected and what it has logged
-npm run dc -- connect windsurf                # preview the change; add --yes to apply
-npm run dc -- import --agent antigravity      # import one agent now
-npm run dc -- sessions --limit 20
-npm run dc -- search "payment webhook"
-npm run dc -- resume --project my-app --agent codex     # print a continuation briefing
-npm run dc -- handoff --project my-app --drop-in        # full handoff package + RESUME.md in the repo
-npm run dc -- backup
+npx devcontinuity agents                          # what is connected and what it has logged
+npx devcontinuity connect windsurf                # preview the change; add --yes to apply
+npx devcontinuity import --agent antigravity      # import one agent now
+npx devcontinuity sessions --limit 20
+npx devcontinuity search "payment webhook"
+npx devcontinuity resume --project my-app --agent codex     # print a continuation briefing
+npx devcontinuity handoff --project my-app --drop-in        # full handoff package + RESUME.md in the repo
+npx devcontinuity wrapped --month 2026-11                   # AI Coding Wrapped in the terminal (--year 2026, --json)
+npx devcontinuity backup
 ```
 
 ## MCP server (let agents use it)
@@ -225,8 +256,9 @@ Everything works without configuration. Optional settings go in `.env.local` (se
 
 | Variable | Purpose |
 | --- | --- |
-| `DEVCONTINUITY_DATA_DIR` | Where the database, safe copies, live captures and backups live (default `./data`) |
-| `PORT` | Web UI port for `npm run app` (default 3210) |
+| `DEVCONTINUITY_DATA_DIR` | Where the database, safe copies, live captures and backups live (default `~/.devcontinuity` for `npx`/npm installs, `./data` in a checkout) |
+| `PORT` | Web UI port (default 3210; or `npx devcontinuity --port 4000`) |
+| `DEVCONTINUITY_DEMO=1` | Read-only public demo mode: every write is refused and a Demo ribbon is shown. See [docs/DEMO.md](docs/DEMO.md) |
 | `ANTHROPIC_API_KEY` | Optional AI features (summaries, *Ask my projects*). Other providers (OpenAI, Gemini, OpenRouter, DeepSeek, Ollama, LM Studio) are added in **Settings** |
 | `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `CONTINUE_GLOBAL_DIR` | Non-default agent locations. More folders can be added in **Settings → Agents** |
 
@@ -241,11 +273,25 @@ Found a security problem? See [SECURITY.md](SECURITY.md).
 
 ## Optional: AI organization (experimental)
 
-An experimental module where a "CEO" agent plans your requests and AI workers carry them out in sandbox Git worktrees, with your approval at every step. It is off by default; turn it on in **Settings → Features**.
+An experimental module where a "CEO" agent plans your requests and AI workers carry them out in sandbox Git worktrees, with your approval at every step. It is off by default; turn it on in **Settings → Features**. It lives in its own module ([src/modules/org](src/modules/org/README.md)); while it is off its pages and API answer 404, and its data is kept.
+
+## Hosted demo
+
+`DEVCONTINUITY_DEMO=1` serves the fictional demo workspace read-only, and the [Dockerfile](Dockerfile) packages it. See [docs/DEMO.md](docs/DEMO.md).
 
 ## Contributing
 
-Contributions are welcome, especially adapters for more agents. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome, especially adapters for more agents. See [CONTRIBUTING.md](CONTRIBUTING.md), the [roadmap](docs/ROADMAP.md) (with good first issues) and the [code of conduct](CODE_OF_CONDUCT.md).
+
+## Releasing (maintainers)
+
+```bash
+npm run build && npm run pack:check     # packs, scans for private paths, installs and starts the tarball
+git tag v2.1.0 && git push origin v2.1.0 # CI checks everything and creates the GitHub release with the tarball
+npm publish devcontinuity-2.1.0.tgz      # the tarball attached to the release (built on Linux)
+```
+
+Release notes come from [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
