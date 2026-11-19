@@ -1,6 +1,6 @@
 name: Release
 
-# Runs when a version tag is pushed (git tag v2.1.0 && git push origin v2.1.0).
+# Runs when a version tag is pushed (git tag v2.1.1 && git push origin v2.1.1).
 # Builds and checks the npm package, then creates a GitHub release with the tarball attached.
 # Publishing to npm stays a manual step for the maintainer: "npm publish <tarball>".
 

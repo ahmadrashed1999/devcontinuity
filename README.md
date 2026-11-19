@@ -287,8 +287,8 @@ Contributions are welcome, especially adapters for more agents. See [CONTRIBUTIN
 
 ```bash
 npm run build && npm run pack:check     # packs, scans for private paths, installs and starts the tarball
-git tag v2.1.0 && git push origin v2.1.0 # CI checks everything and creates the GitHub release with the tarball
-npm publish devcontinuity-2.1.0.tgz      # the tarball attached to the release (built on Linux)
+git tag v2.1.1 && git push origin v2.1.1 # CI checks everything and creates the GitHub release with the tarball
+npm publish devcontinuity-2.1.1.tgz      # the tarball attached to the release (built on Linux)
 ```
 
 Release notes come from [CHANGELOG.md](CHANGELOG.md).

@@ -1,6 +1,6 @@
 {
   "name": "devcontinuity",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "One local log for every AI coding agent: Claude Code, Codex, Antigravity, Cursor, Copilot, Cline, Gemini CLI, Windsurf and more. Search it, verify it, and continue any session with any agent.",
   "license": "MIT",
   "author": "Ahmad Albarghash",
