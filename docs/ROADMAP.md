@@ -33,11 +33,10 @@ Small, well-scoped tasks with tests to copy from. Each has a ready `gh` command 
 
 | # | Task | Where to start |
 | --- | --- | --- |
-| 1 | Add an agent to the Skills Shop catalog (pick one MCP server you use) | `src/lib/skills-catalog.ts`, `tests/skills-shop.test.ts` |
-| 2 | Translate the Settings sub-panels (AI providers, phone access) into Arabic | `src/components/dc/settings-ui.tsx`, `src/lib/i18n-pages.ts` |
-| 3 | Show the Wrapped share card in the page as a preview before download | `src/components/dc/wrapped-share.tsx` |
-| 4 | "Copy as Markdown" for a session timeline | `src/components/dc/session-timeline.tsx` |
-| 5 | Add a fixture test for an Aider history with `/undo` and `/run` | `tests/agents.test.ts`, `src/server/adapters/aider.ts` |
+| 1 | Add a verified entry to the Skills Shop catalog (pick one MCP server or skill you use) | `src/lib/skills/<category>.ts`, `tests/skills-shop.test.ts` |
+| 2 | Show the Wrapped share card in the page as a preview before download | `src/components/dc/wrapped-share.tsx` |
+| 3 | "Copy as Markdown" for a session timeline | `src/components/dc/session-timeline.tsx` |
+| 4 | Add a fixture test for an Aider history with `/undo` and `/run` | `tests/agents.test.ts`, `src/server/adapters/aider.ts` |
 | 6 | Linux terminal: support `wezterm` and `foot` in the launcher | `src/server/agents/launcher.ts` (`POSIX_TERMINALS`) |
 | 7 | Keyboard shortcut `/` to focus the search box | `src/components/dc/shell.tsx` |
 
@@ -62,8 +61,7 @@ gh issue create --label roadmap --title "Price token-only agents" --body "Agents
 ```
 
 ```bash
-gh issue create --label "good first issue" --title "Skills Shop: add another MCP server" --body "Add one entry to src/lib/skills-catalog.ts (English + Arabic text, an official URL) and run npm test; tests/skills-shop.test.ts checks every entry."
-gh issue create --label "good first issue" --title "Arabic: translate the Settings sub-panels" --body "Move the strings in src/components/dc/settings-ui.tsx into src/lib/i18n-pages.ts (en + ar) and use useT(). Check with npm run demo:rtl."
+gh issue create --label "good first issue" --title "Skills Shop: add another MCP server" --body "Add one entry to the matching file in src/lib/skills/ (English + Arabic text, install steps copied from the item's own README or docs, an official URL) and run npm test; tests/skills-shop.test.ts checks every entry."
 gh issue create --label "good first issue" --title "Wrapped: preview the share card before downloading" --body "Draw the card (drawWrapped in src/components/dc/wrapped-share.tsx) into a visible canvas on /wrapped."
 gh issue create --label "good first issue" --title "Copy a session timeline as Markdown" --body "Add a button to the session page that copies the visible timeline as Markdown (redacted text only)."
 gh issue create --label "good first issue" --title "Aider: fixture test for /undo and /run" --body "Extend the Aider fixture in tests/agents.test.ts with /undo and /run output and make sure the adapter records them sensibly."

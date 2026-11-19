@@ -179,7 +179,7 @@ The UI is available in English and Arabic (right-to-left) and works on phones.
 <table>
   <tr>
     <td width="50%"><img src="docs/images/wrapped.png" alt="AI Coding Wrapped: a month with every agent in numbers" /><br /><sub><b>AI Coding Wrapped:</b> sessions, prompts, tool calls, tokens and outcomes per agent, with a shareable image.</sub></td>
-    <td width="50%"><img src="docs/images/skills.png" alt="Skills Shop: best MCP servers and skills per agent" /><br /><sub><b>Skills Shop:</b> the most useful skills and MCP servers per agent, by category, with install steps for each agent.</sub></td>
+    <td width="50%"><img src="docs/images/skills.png" alt="Skills Shop: best MCP servers and skills per agent" /><br /><sub><b>Skills Shop:</b> 100+ verified skills, MCP servers, plugins and rules (Ponytail, Superpowers, Spec Kit, official MCP servers…) in 18 categories, filtered by agent and type, with install steps for each of ten agents.</sub></td>
   </tr>
   <tr>
     <td colspan="2"><img src="docs/images/compare.png" alt="Agent comparison table" /><br /><sub><b>Compare agents:</b> honest "not enough data" instead of ranking small samples.</sub></td>

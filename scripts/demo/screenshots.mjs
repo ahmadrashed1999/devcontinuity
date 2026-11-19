@@ -5,6 +5,7 @@
  *
  *   npm run demo:screenshots                # expects the demo at http://localhost:3299
  *   BROWSER=/path/to/chrome npm run demo:screenshots
+ *   ONLY=skills npm run demo:screenshots    # just one (or a comma-separated list of) image(s)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,7 +37,9 @@ async function main() {
   const list = await (await fetch(`${base}/sessions?agent=claude-code`)).text();
   const firstSession = list.match(/\/sessions\/([a-z0-9]{20,})/)?.[1] ?? '';
   await withBrowser(async ({ page }) => {
-    for (const s of SHOTS) {
+    // ONLY=skills,arabic regenerates just those images.
+    const only = process.env.ONLY?.split(',').map((x) => x.trim());
+    for (const s of SHOTS.filter((x) => !only || only.includes(x.name))) {
       await page.cookie('dc_lang', s.lang ?? 'en', base);
       await page.viewport(s.width, s.height, s.scale ?? 1, !!s.mobile);
       const target = s.file ? pathToFileURL(path.join(root, s.file)).href : base + s.url.replace('{firstSession}', firstSession);

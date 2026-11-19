@@ -35,8 +35,20 @@ The first public release.
   agent, with a 1200×630 share image drawn in the browser, in English or Arabic.
 - **Compare agents:** completion, interruption and error rates, tools per prompt, files per session
   and cost per finished session, with "not enough data" for small samples.
-- **Skills Shop** (`/skills`): a curated catalog of the best MCP servers, skills, plugins, rules and
-  extensions per agent, by category, with benefits, install steps for ten agents and usage examples.
+- **Skills Shop** (`/skills`): a curated catalog of 107 skills, MCP servers, plugins, extensions,
+  sub-agent packs, rules and tools for ten agents, in 18 categories (skills packs, code review,
+  testing, browser automation, frontend, docs, web search, memory, code intelligence, databases,
+  DevOps, security, monitoring, data science, mobile, project management, documents, rules), with
+  benefits, install steps for each agent, usage examples and top picks per agent. Includes Ponytail,
+  Superpowers, Spec Kit, OpenSpec, Anthropic's official plugins and skills, and official MCP servers
+  from GitHub, Microsoft, Google, AWS, Cloudflare, Vercel, Stripe and others; every install command
+  was checked against the item's own repository or docs. Filter by agent, category and type, show
+  official items only, sort by GitHub stars or name, and spot popular items (10k+ stars). Skills
+  repositories install in every agent through the open `npx skills` CLI. Still copy-only.
+- Arabic for the Settings panels (AI providers, routes, budget, prices, agent programs, AI
+  organization limits and phone access), with commands and environment variables kept
+  left-to-right; copy boxes in the Skills Shop no longer cover the start of a command in Arabic, and
+  tab bars no longer show a stray scrollbar.
 - **More agents:** Aider, ChatGPT and Claude.ai data exports, Zed (experimental), and live-capture
   recipes for Qwen Code, Copilot CLI and Kiro (experimental).
 - Claude Code sessions now record token usage.
