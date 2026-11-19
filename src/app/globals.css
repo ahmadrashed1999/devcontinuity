@@ -88,7 +88,7 @@
 }
 
 /* A table that is wider than its container scrolls inside it instead of widening the page. */
-.dc-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.dc-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
 
 /* Agent identity: one colour per agent, used for dots, chips and bars. */
 .agent-dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: currentColor; flex-shrink: 0; }

@@ -9,7 +9,7 @@
 import { withBrowser } from './cdp.mjs';
 
 const base = process.env.DEMO_URL || 'http://localhost:3299';
-const PAGES = ['/', '/tasks', '/import', '/settings', '/settings?tab=agents', '/handoff', '/projects', '/knowledge', '/worktrees', '/verify', '/costs', '/prompts', '/backups', '/wrapped', '/skills', '/agents', '/agents?tab=compare', '/sessions', '/search?q=test'];
+const PAGES = ['/', '/tasks', '/import', '/settings', '/settings?tab=agents', '/settings?tab=remote','/handoff', '/projects', '/knowledge', '/worktrees', '/verify', '/costs', '/prompts', '/backups', '/wrapped', '/skills', '/agents', '/agents?tab=compare', '/sessions', '/search?q=test'];
 const WIDTHS = [390, 1440];
 
 const firstProject = await (await fetch(`${base}/projects`)).text().then((h) => h.match(/\/projects\/([a-z0-9]{20,})/)?.[1]);
