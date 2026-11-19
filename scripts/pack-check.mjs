@@ -38,7 +38,9 @@ for (const f of packed.files.filter((x) => x.path.startsWith('bin/') || x.path.e
 }
 
 // 2. Private data scan over the packed files.
-const needles = [os.homedir(), os.homedir().replace(/\\/g, '/'), os.homedir().replace(/\\/g, '\\\\'), APP_ROOT, APP_ROOT.replace(/\\/g, '/')].filter((n) => n.length > 4);
+// Each path as written natively, with forward slashes, and JSON-escaped ("C:\\Users\\…").
+const variants = (p) => [p, p.replace(/\\/g, '/'), p.replace(/\\/g, '\\\\')];
+const needles = [...new Set([...variants(os.homedir()), ...variants(APP_ROOT)])].filter((n) => n.length > 4);
 const user = os.userInfo().username;
 const forbidden = packed.files.map((f) => f.path).filter((p) => /^(data|demo)\//.test(p) || /\.(db|sqlite)$/.test(p) || /(^|\/)\.env(\.|$)/.test(p));
 if (forbidden.length) fail(`private files would be published: ${forbidden.join(', ')}`);
