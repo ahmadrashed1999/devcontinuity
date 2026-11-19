@@ -72,7 +72,8 @@
     "prepublishOnly": "node scripts/setup.mjs && npm run typecheck && npm test && npm run build",
     "pack:check": "node scripts/pack-check.mjs",
     "prepack": "node scripts/package-externals.mjs",
-    "demo:gif": "node scripts/demo/gif.mjs"
+    "demo:gif": "node scripts/demo/gif.mjs",
+    "demo:rtl": "node scripts/demo/rtl-check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

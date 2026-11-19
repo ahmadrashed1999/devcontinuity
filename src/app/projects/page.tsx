@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProjectsPage({ searchParams }: PageProps<'/projects'>) {
   await ensureDb();
-  const { t } = await getT();
+  const { t, lang } = await getT();
   const sp = await searchParams;
   const q = typeof sp.q === 'string' ? sp.q : undefined;
   const projects = await prisma().project.findMany({
@@ -19,8 +19,8 @@ export default async function ProjectsPage({ searchParams }: PageProps<'/project
   });
   return (
     <div>
-      <PageHeader title={t.projects} subtitle={`${projects.length} projects, grouped automatically from session working directories (worktrees fold into their repository).`} />
-      <FilterBar><TextFilter name="q" value={q} label="Name or path" /></FilterBar>
+      <PageHeader title={t.projects} subtitle={t.projectsSubtitle.replace('{n}', String(projects.length))} />
+      <FilterBar><TextFilter name="q" value={q} label={t.fNameOrPath} /></FilterBar>
       {projects.length === 0 ? <Empty>{t.importFirst}</Empty> : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {projects.map((p) => {
@@ -34,19 +34,19 @@ export default async function ProjectsPage({ searchParams }: PageProps<'/project
                     <div className="truncate font-semibold text-white group-hover:text-primary">{p.name}</div>
                     <div className="truncate font-mono text-[11px] text-muted-foreground">{p.rootPath}</div>
                   </div>
-                  <div className="shrink-0 text-xs text-muted-foreground">{ago(p.lastActivityAt)}</div>
+                  <div className="shrink-0 text-xs text-muted-foreground">{ago(p.lastActivityAt, lang)}</div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {!p.pathVerified && <Pill className="border-warning/30 text-warning">path unverified</Pill>}
-                  {p.pathVerified && !p.pathExists && <Pill className="border-danger/30 text-danger">folder missing</Pill>}
+                  {!p.pathVerified && <Pill className="border-warning/30 text-warning">{t.pathUnverified}</Pill>}
+                  {p.pathVerified && !p.pathExists && <Pill className="border-danger/30 text-danger">{t.folderMissing}</Pill>}
                   {p.isGitRepo && <Pill className="border-border text-slate-300">git</Pill>}
                   {stack.slice(0, 4).map((s) => <Pill key={s.name} className="border-cyan/25 text-cyan">{s.name}</Pill>)}
                 </div>
                 <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                  <span>{p._count.sessions} sessions</span>
-                  <span>{p._count.tasks} tasks</span>
-                  {wip > 0 && <span className="text-warning">{wip} unfinished</span>}
-                  {rv > 0 && <span className="text-indigo-300">{rv} to verify</span>}
+                  <span>{p._count.sessions} {t.sessionsWord}</span>
+                  <span>{p._count.tasks} {t.tasksWord}</span>
+                  {wip > 0 && <span className="text-warning">{wip} {t.unfinished}</span>}
+                  {rv > 0 && <span className="text-indigo-300">{rv} {t.toVerify}</span>}
                 </div>
                 <div className="mt-1 text-[11px] text-slate-500">{fmtDate(p.firstActivityAt, false)} → {fmtDate(p.lastActivityAt, false)}</div>
               </Link>

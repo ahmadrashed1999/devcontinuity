@@ -1,6 +1,9 @@
+import { pagesAr, pagesEn } from './i18n-pages';
+
 export type Lang = 'en' | 'ar';
 
 const en = {
+  ...pagesEn,
   appTagline: 'One log for every AI coding agent',
   dashboard: 'Overview',
   projects: 'Projects',
@@ -211,6 +214,7 @@ const en = {
 };
 
 const ar: typeof en = {
+  ...pagesAr,
   appTagline: 'سجل واحد لكل وكلاء البرمجة بالذكاء الاصطناعي',
   dashboard: 'نظرة عامة',
   projects: 'المشاريع',

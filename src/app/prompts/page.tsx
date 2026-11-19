@@ -13,7 +13,7 @@ export default async function PromptsPage() {
   const projects = await prisma().project.findMany({ orderBy: { lastActivityAt: 'desc' }, select: { id: true, name: true } });
   return (
     <div>
-      <PageHeader title={t.prompts} subtitle="Prompts that worked well, reusable with any agent. Fill in the project, copy, or open an agent with the prompt loaded." />
+      <PageHeader title={t.prompts} subtitle={t.promptsSubtitle} />
       <PromptLibrary projects={projects} />
     </div>
   );
