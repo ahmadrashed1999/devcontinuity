@@ -1,12 +1,12 @@
 # Launch kit (drafts)
 
 Ready-to-post texts and the places to submit DevContinuity. **Nothing here has been posted or
-submitted.** Post them yourself after `npx devcontinuity` is live on npm and v2.1.0 is released.
+submitted.** Post them yourself after `npx devcontinuity` is live on npm and v2.1.1 is released.
 
 Before posting:
 
 - [ ] `npm publish` done, and `npx devcontinuity` works on a clean machine
-- [ ] GitHub release v2.1.0 created (the tag triggers it)
+- [ ] GitHub release v2.1.1 created (the tag triggers it)
 - [ ] Social preview uploaded (repository Settings → General → Social preview → `docs/images/banner.png`)
 - [ ] Repository topics set: `ai-agents claude-code codex cursor mcp developer-tools local-first`
 - [ ] Discussions enabled (the issue templates link to them)

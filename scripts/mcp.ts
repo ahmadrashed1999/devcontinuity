@@ -124,7 +124,7 @@ async function handle(msg: { id?: number | string; method?: string; params?: Rec
       const info = params.clientInfo as { name?: string } | undefined;
       if (info?.name) clientAgent = clientName(info.name);
     }
-    if (method === 'initialize') return send({ jsonrpc: '2.0', id, result: { protocolVersion: (params.protocolVersion as string) ?? '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'devcontinuity', version: '2.1.0' } } });
+    if (method === 'initialize') return send({ jsonrpc: '2.0', id, result: { protocolVersion: (params.protocolVersion as string) ?? '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'devcontinuity', version: '2.1.1' } } });
     if (method === 'ping') return send({ jsonrpc: '2.0', id, result: {} });
     if (method === 'tools/list') return send({ jsonrpc: '2.0', id, result: { tools: TOOLS } });
     if (method === 'tools/call') {

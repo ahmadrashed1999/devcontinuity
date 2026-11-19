@@ -51,7 +51,7 @@ export function homeDir(): string {
   return os.homedir();
 }
 
-export const APP_VERSION = '2.1.0';
+export const APP_VERSION = '2.1.1';
 
 /** Maximum characters of event text kept in the database. Full content always remains in the archived original. */
 export const MAX_EVENT_TEXT = 12_000;
