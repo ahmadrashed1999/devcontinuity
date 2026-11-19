@@ -1,0 +1,35 @@
+name: Support a new agent
+description: Ask for (or help build) support for another AI coding agent.
+labels: [new agent]
+body:
+  - type: input
+    id: agent
+    attributes:
+      label: Agent
+      placeholder: "e.g. Amp, Trae, Augment, JetBrains AI"
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where does it keep its history?
+      description: "Folder and file format (JSON, JSONL, SQLite, encrypted?) on Windows / macOS / Linux, if you know. Links to docs welcome."
+    validations:
+      required: true
+  - type: textarea
+    id: live
+    attributes:
+      label: Hooks, OpenTelemetry or MCP support?
+      description: "Can it run a command on events, export OpenTelemetry logs, or use MCP servers? Link the docs."
+  - type: textarea
+    id: sample
+    attributes:
+      label: A small, fake sample (optional)
+      description: "A few lines in the agent's real format with made-up content. Never paste real transcripts."
+      render: json
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I can help test it, or write the adapter (see CONTRIBUTING.md → Adding an agent).
